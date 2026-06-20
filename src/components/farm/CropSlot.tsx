@@ -16,6 +16,7 @@ type CropSlotProps = {
   planted?: PlantedCrop;
   plantable?: boolean;
   onPlant?: () => void;
+  onUproot?: () => void;
 };
 
 // Planting slot — anchor matches debug overlay grid points (center at x,y).
@@ -29,6 +30,7 @@ export function CropSlot({
   planted,
   plantable = false,
   onPlant,
+  onUproot,
 }: CropSlotProps) {
   const crop: CropKind = "corn";
   const plantWidth = PLANT_SPRITE_SIZE.width * scale;
@@ -39,7 +41,8 @@ export function CropSlot({
     return (
       <button
         type="button"
-        className="absolute cursor-default"
+        onClick={() => onUproot?.()}
+        className={`absolute ${onUproot ? "cursor-pointer hover:brightness-110" : "cursor-default"}`}
         style={{
           left: x - plantWidth / 2,
           top: y - plantHeight,

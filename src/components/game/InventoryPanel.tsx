@@ -4,8 +4,10 @@ import { useState } from "react";
 import { useGame } from "@/context/GameProvider";
 import { INVENTORY_SLOTS } from "@/lib/inventoryBoard";
 import { getMenuScale, menuToScreen } from "@/lib/menuCoordinates";
-import { isSeedPack } from "@/lib/itemConfig";
+import { isSeedPack, SEED_PACK_TOOLTIP } from "@/lib/itemConfig";
+import { RARITY_LABELS } from "@/lib/seedConfig";
 import type { ScreenPosition } from "@/lib/uiConfig";
+import { ConfirmDialog } from "./ConfirmDialog";
 import { InventoryItemVisual } from "./InventoryItemTooltip";
 import { InventorySlotBoard } from "./InventorySlotBoard";
 import { SeedPackOpeningModal } from "./SeedPackOpeningModal";
@@ -19,10 +21,19 @@ const ITEM_SIZE_SCALE = 1.44;
 
 // Inventory hitboxes, item visuals, and seed pack opening flow.
 export function InventoryPanel({ menuPosition }: InventoryPanelProps) {
-  const { inventory, canOpenSeedPack, selectPlantingSeed, plantingSeedSlot } =
-    useGame();
+  const {
+    inventory,
+    canOpenSeedPack,
+    selectPlantingSeed,
+    plantingSeedSlot,
+    discardInventoryItem,
+  } = useGame();
   const [openingPackSlot, setOpeningPackSlot] = useState<number | null>(null);
   const [inventoryMessage, setInventoryMessage] = useState<string | null>(null);
+  const [discardTarget, setDiscardTarget] = useState<{
+    slotId: number;
+    label: string;
+  } | null>(null);
   const scale = getMenuScale();
   const itemSize = BASE_ITEM_SIZE * ITEM_SIZE_SCALE * scale;
 
@@ -38,6 +49,19 @@ export function InventoryPanel({ menuPosition }: InventoryPanelProps) {
 
     setInventoryMessage(null);
     setOpeningPackSlot(slotId);
+  };
+
+  const requestDiscard = (slotId: number) => {
+    const entry = inventory[slotId];
+    if (!entry) return;
+
+    const label = isSeedPack(entry.itemId)
+      ? SEED_PACK_TOOLTIP.title
+      : entry.rarity
+        ? RARITY_LABELS[entry.rarity]
+        : entry.itemId;
+
+    setDiscardTarget({ slotId, label });
   };
 
   return (
@@ -72,6 +96,7 @@ export function InventoryPanel({ menuPosition }: InventoryPanelProps) {
               selected={plantingSeedSlot === slot.id}
               onOpenPack={() => tryOpenPack(slot.id)}
               onSelectSeed={() => selectPlantingSeed(slot.id)}
+              onDiscard={() => requestDiscard(slot.id)}
             />
           </div>
         );
@@ -95,6 +120,23 @@ export function InventoryPanel({ menuPosition }: InventoryPanelProps) {
           onClose={() => setOpeningPackSlot(null)}
         />
       ) : null}
+
+      <ConfirmDialog
+        open={discardTarget !== null}
+        title="Discard item?"
+        message={
+          discardTarget
+            ? `Throw away ${discardTarget.label}? This cannot be undone.`
+            : ""
+        }
+        confirmLabel="Discard"
+        onConfirm={() => {
+          if (!discardTarget) return;
+          discardInventoryItem(discardTarget.slotId);
+          setDiscardTarget(null);
+        }}
+        onCancel={() => setDiscardTarget(null)}
+      />
     </>
   );
 }

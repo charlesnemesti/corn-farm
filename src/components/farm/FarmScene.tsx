@@ -6,12 +6,15 @@ import { useCoverTransform } from "@/hooks/useCoverTransform";
 import { useSlotCalibration } from "@/hooks/useSlotCalibration";
 import { FARMER_NPC } from "@/lib/npcSprites";
 import { FARM_BACKGROUND, PLOT_SLOTS } from "@/lib/plotBoard";
+import { DevDebugPanel } from "@/components/game/DevDebugPanel";
 import { GameMenuPanel } from "@/components/game/GameMenuPanel";
 import { InventoryDebugOverlay } from "@/components/game/InventoryDebugOverlay";
 import { InventoryPanel } from "@/components/game/InventoryPanel";
+import { MenuStatsPanel } from "@/components/game/MenuStatsPanel";
 import { DebugOverlay } from "./DebugOverlay";
 import { FarmerNpc } from "./FarmerNpc";
 import { PlotBoard } from "./PlotBoard";
+import { PlotRowUnlockLayer } from "./PlotRowUnlockLayer";
 import { NpcDialog } from "./NpcDialog";
 import { SeedShopPanel } from "./SeedShopPanel";
 import { SeedShopSign } from "./SeedShopSign";
@@ -42,6 +45,8 @@ function FarmSceneContent() {
       {sceneReady ? (
         <>
           <PlotBoard transform={transform} />
+
+          <PlotRowUnlockLayer transform={transform} />
 
           <FarmerNpc
             route={calibration.routePoints}
@@ -74,8 +79,12 @@ function FarmSceneContent() {
 
           <InventoryPanel menuPosition={calibration.gameMenuPosition} />
 
+          <MenuStatsPanel menuPosition={calibration.gameMenuPosition} />
+
           {debug ? (
             <>
+              <DevDebugPanel />
+
               <DebugOverlay
                 transform={transform}
                 slots={PLOT_SLOTS}

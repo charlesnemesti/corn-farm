@@ -19,6 +19,16 @@ export const GAME_MENU_POSITION: ScreenPosition = {
   y: 88,
 };
 
+/** First stats line anchor in MENU.png space (centered under the Stats divider). */
+export const STATS_TEXT_ANCHOR = {
+  x: 566,
+  y: 980,
+  /** Extra downward offset applied in screen pixels after menu scaling. */
+  screenOffsetY: 10,
+  /** Vertical gap between stats lines in screen pixels. */
+  lineGap: 6,
+} as const;
+
 export function getGameMenuDisplaySize() {
   const scale = FARM_MENU.displayWidth / FARM_MENU.width;
   return {

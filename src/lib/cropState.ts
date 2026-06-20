@@ -45,3 +45,20 @@ export function formatRemainingTime(remainingMs: number): string {
   }
   return `${seconds}s`;
 }
+
+/** Sum hourly $CORN output from all currently planted crops. */
+export function calculateCornPerHour(plantedCrops: PlantedCrop[]): number {
+  return plantedCrops.reduce((total, crop) => {
+    const stats = SEED_STATS[crop.rarity];
+    const cornPerSecond = stats.cornPerCycle / stats.harvestCycleSeconds;
+    return total + cornPerSecond * 3600;
+  }, 0);
+}
+
+export function formatCornPerHour(rate: number): string {
+  const rounded = Math.round(rate * 10) / 10;
+  const formatted = Number.isInteger(rounded)
+    ? rounded.toLocaleString("en-US")
+    : rounded.toLocaleString("en-US", { maximumFractionDigits: 1 });
+  return `${formatted} $CORN/h`;
+}

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { InventoryEntry } from "@/lib/gameState";
 import {
   SEED_PACK_TOOLTIP,
@@ -16,17 +17,53 @@ import {
 
 type InventoryItemTooltipProps = {
   entry: InventoryEntry;
+  onDiscard?: () => void;
 };
 
-export function InventoryItemTooltip({ entry }: InventoryItemTooltipProps) {
+function DiscardButton({ onDiscard }: { onDiscard: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={(event) => {
+        event.stopPropagation();
+        onDiscard();
+      }}
+      onMouseDown={(event) => event.stopPropagation()}
+      className="mt-2 w-full rounded-md border border-red-500/35 bg-red-950/70 px-2 py-1 text-[10px] font-semibold text-red-200 transition hover:bg-red-900/80"
+    >
+      Discard
+    </button>
+  );
+}
+
+type TooltipAnchorProps = {
+  widthClass: string;
+  children: ReactNode;
+};
+
+// Padding below the panel bridges the gap so hover stays active while moving to Discard.
+function TooltipAnchor({ widthClass, children }: TooltipAnchorProps) {
+  return (
+    <div
+      className={`pointer-events-none absolute bottom-full left-1/2 z-[60] ${widthClass} -translate-x-1/2 pb-3 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100`}
+    >
+      <div className="rounded-lg border border-white/15 bg-black/95 p-2.5 text-left text-white shadow-xl">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export function InventoryItemTooltip({ entry, onDiscard }: InventoryItemTooltipProps) {
   if (isSeedPack(entry.itemId)) {
     return (
-      <div className="pointer-events-none absolute bottom-full left-1/2 z-[60] mb-2 w-44 -translate-x-1/2 rounded-lg border border-white/15 bg-black/95 p-2.5 text-left text-white opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100">
+      <TooltipAnchor widthClass="w-44">
         <p className="text-xs font-bold text-farm-sun">{SEED_PACK_TOOLTIP.title}</p>
         <p className="mt-1 text-[11px] leading-snug text-white/70">
           {SEED_PACK_TOOLTIP.description}
         </p>
-      </div>
+        {onDiscard ? <DiscardButton onDiscard={onDiscard} /> : null}
+      </TooltipAnchor>
     );
   }
 
@@ -36,7 +73,7 @@ export function InventoryItemTooltip({ entry }: InventoryItemTooltipProps) {
   const stats = SEED_STATS[rarity];
 
   return (
-    <div className="pointer-events-none absolute bottom-full left-1/2 z-[60] mb-2 w-48 -translate-x-1/2 rounded-lg border border-white/15 bg-black/95 p-2.5 text-left text-white opacity-0 shadow-xl transition-opacity duration-150 group-hover:opacity-100">
+    <TooltipAnchor widthClass="w-48">
       <p className={`text-xs font-bold ${RARITY_TEXT_CLASS[rarity]}`}>
         {RARITY_LABELS[rarity]}
       </p>
@@ -57,7 +94,8 @@ export function InventoryItemTooltip({ entry }: InventoryItemTooltipProps) {
           </dd>
         </div>
       </dl>
-    </div>
+      {onDiscard ? <DiscardButton onDiscard={onDiscard} /> : null}
+    </TooltipAnchor>
   );
 }
 
@@ -67,6 +105,7 @@ type InventoryItemVisualProps = {
   selected?: boolean;
   onOpenPack?: () => void;
   onSelectSeed?: () => void;
+  onDiscard?: () => void;
 };
 
 export function InventoryItemVisual({
@@ -75,6 +114,7 @@ export function InventoryItemVisual({
   selected = false,
   onOpenPack,
   onSelectSeed,
+  onDiscard,
 }: InventoryItemVisualProps) {
   const imageSrc = getInventoryItemImage(entry);
   if (!imageSrc) return null;
@@ -101,7 +141,7 @@ export function InventoryItemVisual({
         }
       }}
     >
-      <InventoryItemTooltip entry={entry} />
+      <InventoryItemTooltip entry={entry} onDiscard={onDiscard} />
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={imageSrc}
