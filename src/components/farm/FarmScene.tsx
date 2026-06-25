@@ -9,8 +9,7 @@ import { useCoverTransform } from "@/hooks/useCoverTransform";
 import { useSlotCalibration } from "@/hooks/useSlotCalibration";
 import { getGameMenuLayout, resolveMenuLayout } from "@/lib/menuCoordinates";
 import { FARMER_NPC } from "@/lib/npcSprites";
-import { FARM_BACKGROUND, PLOT_SLOTS } from "@/lib/plotBoard";
-import { ROUTE_POINTS } from "@/lib/routeConfig";
+import { FARM_BACKGROUND } from "@/lib/plotBoard";
 import { BackpackToggle } from "@/components/game/BackpackToggle";
 import { InventoryDebugOverlay } from "@/components/game/InventoryDebugOverlay";
 import { InventoryMenuShell } from "@/components/game/InventoryMenuShell";
@@ -22,6 +21,7 @@ import { NpcDialog } from "./NpcDialog";
 import { SeedShopPanel } from "./SeedShopPanel";
 import { SeedShopSign } from "./SeedShopSign";
 import { SlotCalibratorPanel } from "./SlotCalibratorPanel";
+import { SkyBirdsLayer } from "./SkyBirdsLayer";
 import { VillagerNpc } from "./VillagerNpc";
 
 function FarmSceneContent() {
@@ -75,12 +75,17 @@ function FarmSceneContent() {
 
       {sceneReady ? (
         <>
-          <PlotBoard transform={transform} />
+          <PlotBoard transform={transform} slots={calibration.slots} />
 
-          <PlotRowUnlockLayer transform={transform} />
+          <SkyBirdsLayer
+            viewportWidth={transform.viewportWidth}
+            viewportHeight={transform.viewportHeight}
+          />
+
+          <PlotRowUnlockLayer transform={transform} slots={calibration.slots} />
 
           <FarmerNpc
-            route={ROUTE_POINTS}
+            route={calibration.routePoints}
             transform={transform}
             paused={farmerDialogOpen}
             onClick={() => setFarmerDialogOpen(true)}
@@ -122,8 +127,8 @@ function FarmSceneContent() {
             <>
               <DebugOverlay
                 transform={transform}
-                slots={PLOT_SLOTS}
-                routePoints={ROUTE_POINTS}
+                slots={calibration.slots}
+                routePoints={calibration.routePoints}
                 target={calibration.target}
                 showCropMarkers={showCropMarkers}
                 showRouteMarkers={showRouteMarkers}

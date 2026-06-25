@@ -12,13 +12,12 @@ export type PlotRowUnlockConfig = {
   cornCost: number;
 };
 
-/** Row 1 (plotId 0) is free; rows 2–6 unlock in order with level + $CORN. */
+/** Row 1 (plotId 0) is free; rows 2–5 unlock in order with level + $CORN. */
 export const PLOT_ROW_UNLOCKS: PlotRowUnlockConfig[] = [
   { plotId: 1, minLevel: 2, cornCost: 500 },
   { plotId: 2, minLevel: 3, cornCost: 1_500 },
   { plotId: 3, minLevel: 5, cornCost: 4_000 },
   { plotId: 4, minLevel: 7, cornCost: 8_000 },
-  { plotId: 5, minLevel: 10, cornCost: 15_000 },
 ];
 
 export type UnlockPlotFailureReason =

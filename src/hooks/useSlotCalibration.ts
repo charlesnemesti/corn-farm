@@ -74,6 +74,44 @@ function cloneInventory(slots: InventorySlot[]): InventorySlot[] {
   return slots.map((slot) => ({ ...slot }));
 }
 
+function isValidPlotSlots(data: unknown): data is PlotSlotConfig[] {
+  if (!Array.isArray(data) || data.length === 0) return false;
+  return data.every(
+    (plot) =>
+      plot &&
+      typeof plot === "object" &&
+      typeof plot.plotId === "number" &&
+      Array.isArray(plot.slots) &&
+      plot.slots.length === SLOTS_PER_PLOT &&
+      plot.slots.every(
+        (slot: { x?: unknown; y?: unknown }) =>
+          slot &&
+          typeof slot === "object" &&
+          typeof slot.x === "number" &&
+          typeof slot.y === "number" &&
+          Number.isFinite(slot.x) &&
+          Number.isFinite(slot.y),
+      ),
+  );
+}
+
+function loadSavedSlots(): PlotSlotConfig[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(SLOT_STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as unknown;
+    if (!isValidPlotSlots(data) || data.length !== PLOT_SLOTS.length) {
+      localStorage.removeItem(SLOT_STORAGE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    localStorage.removeItem(SLOT_STORAGE_KEY);
+    return null;
+  }
+}
+
 function loadSavedRoute(): RoutePoint[] | null {
   if (typeof window === "undefined") return null;
   try {
@@ -155,6 +193,26 @@ function matchesRouteTarget(pointId: number, target: CalibrationTarget): boolean
 }
 
 export function serializePlotSlots(slots: PlotSlotConfig[]): string {
+  const rowYs = slots.map((plot) => Math.round(plot.slots[0]?.y ?? 0));
+  const colXs = slots[0]?.slots.map((slot) => Math.round(slot.x)) ?? [];
+  const uniformColumns = slots.every((plot) =>
+    plot.slots.every(
+      (slot, slotId) => Math.round(slot.x) === colXs[slotId],
+    ),
+  );
+
+  if (uniformColumns && colXs.length === SLOTS_PER_PLOT) {
+    return [
+      `const ROW_Y = [${rowYs.join(", ")}] as const;`,
+      `const SLOT_X = [${colXs.join(", ")}] as const;`,
+      "",
+      "export const PLOT_SLOTS: PlotSlotConfig[] = ROW_Y.map((y, plotId) => ({",
+      "  plotId,",
+      "  slots: SLOT_X.map((x) => ({ x, y })),",
+      "}));",
+    ].join("\n");
+  }
+
   const lines = slots.map((plot) => {
     const slotLines = plot.slots
       .map((slot) => `      { x: ${Math.round(slot.x)}, y: ${Math.round(slot.y)} },`)
@@ -211,8 +269,12 @@ export function useSlotCalibration() {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    const savedSlots = loadSavedSlots();
+    if (savedSlots) setSlots(savedSlots);
+
     const savedRoute = loadSavedRoute();
     if (savedRoute) setRoutePoints(savedRoute);
+
     setHydrated(true);
   }, []);
 
@@ -401,9 +463,10 @@ export function useSlotCalibration() {
     (plotId: number, slotId: number, x: number, y: number) => {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
       setSlots((prev) => {
-        if (!prev[plotId]?.slots[slotId]) return prev;
+        const plotIndex = prev.findIndex((plot) => plot.plotId === plotId);
+        if (plotIndex < 0 || !prev[plotIndex]?.slots[slotId]) return prev;
         const next = cloneSlots(prev);
-        next[plotId].slots[slotId] = { x, y };
+        next[plotIndex].slots[slotId] = { x, y };
         localStorage.setItem(SLOT_STORAGE_KEY, JSON.stringify(next));
         return next;
       });

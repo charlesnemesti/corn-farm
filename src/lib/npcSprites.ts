@@ -30,13 +30,13 @@ export const VILLAGER_SPRITE = {
   directions: ["down", "left", "right", "up"] as const,
 } as const;
 
-/** Seed shop sign anchor — bottom-center in design space (farm-scene.png pixels). */
+/** Seed shop sign anchor — bottom-center on the path signpost below the farm gate. */
 export const SEED_SHOP_SIGN = {
   src: "/assets/ui/seed-shop-sign.png",
   width: 127,
   height: 256,
   displayWidth: 51,
-  anchor: { x: 118, y: 267 },
+  anchor: { x: 458, y: 438 },
 } as const;
 
 /** Villager feet position relative to the sign bottom-center anchor. */

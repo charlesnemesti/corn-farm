@@ -3,6 +3,7 @@
 import { INVENTORY_SLOT_COUNT } from "./inventoryBoard";
 import type { PlantedCrop } from "./cropState";
 import { applyHarvestProgress } from "./harvestProgress";
+import { PLOT_COUNT } from "./plotBoard";
 import {
   deriveUnlockedPlotIdsFromCrops,
   getStarterUnlockedPlotIds,
@@ -195,6 +196,7 @@ export function saveGameState(state: GameState, currentTime = Date.now()) {
   const normalized: GameState = {
     ...progressed,
     unlockedPlotIds: normalizeUnlockedPlotIds(progressed.unlockedPlotIds),
+    plantedCrops: progressed.plantedCrops.filter((crop) => crop.plotId < PLOT_COUNT),
     lastProgressAt: currentTime,
   };
   localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(normalized));

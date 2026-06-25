@@ -35,6 +35,7 @@ import {
   type UnlockPlotResult,
 } from "@/lib/plotUnlock";
 import { DEMO_MAX_PLOT_ID } from "@/lib/playMode";
+import { PLOT_COUNT } from "@/lib/plotBoard";
 import {
   canFitOpenedSeeds,
   type RolledSeed,
@@ -95,7 +96,7 @@ function applyDemoLimits(state: GameState): GameState {
   return {
     ...state,
     unlockedPlotIds: clampUnlockedPlotsForDemo(state.unlockedPlotIds, true),
-    plantedCrops: state.plantedCrops.filter((crop) => crop.plotId <= DEMO_MAX_PLOT_ID),
+    plantedCrops: state.plantedCrops.filter((crop) => crop.plotId <= DEMO_MAX_PLOT_ID && crop.plotId < PLOT_COUNT),
   };
 }
 

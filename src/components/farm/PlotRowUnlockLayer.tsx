@@ -15,11 +15,15 @@ import {
 
 type PlotRowUnlockLayerProps = {
   transform: CoverTransform;
+  slots?: typeof PLOT_SLOTS;
 };
 
 // Locked rows — label only; click anywhere on the row to unlock.
 const ROW_UNLOCK_LABEL_OFFSET_Y = -5;
-export function PlotRowUnlockLayer({ transform }: PlotRowUnlockLayerProps) {
+export function PlotRowUnlockLayer({
+  transform,
+  slots = PLOT_SLOTS,
+}: PlotRowUnlockLayerProps) {
   const { corn, playerLevel, unlockedPlotIds, unlockPlotRow } = useGame();
   const { playMode } = usePlayMode();
   const demoMode = playMode === "demo";
@@ -54,7 +58,7 @@ export function PlotRowUnlockLayer({ transform }: PlotRowUnlockLayerProps) {
   return (
     <>
       <div className="pointer-events-none absolute inset-0 z-[11]">
-        {PLOT_SLOTS.map((plot) => {
+        {slots.map((plot) => {
           if (isPlotRowUnlocked(plot.plotId, unlockedPlotIds)) return null;
 
           const config = getPlotUnlockConfig(plot.plotId);
