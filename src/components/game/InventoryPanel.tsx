@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { useDrag } from "@/context/DragProvider";
 import { useGame } from "@/context/GameProvider";
+import { useTutorial } from "@/context/TutorialProvider";
 import { INVENTORY_SLOTS } from "@/lib/inventoryBoard";
 import { getMenuScale, menuToScreen } from "@/lib/menuCoordinates";
-import { isSeedPack, SEED_PACK_TOOLTIP } from "@/lib/itemConfig";
+import { CORN_SEED_ITEM, isSeedPack, SEED_PACK_TOOLTIP } from "@/lib/itemConfig";
 import { RARITY_LABELS } from "@/lib/seedConfig";
 import type { ScreenPosition } from "@/lib/uiConfig";
 import { ConfirmDialog } from "./ConfirmDialog";
@@ -28,6 +30,8 @@ export function InventoryPanel({ menuPosition }: InventoryPanelProps) {
     plantingSeedSlot,
     discardInventoryItem,
   } = useGame();
+  const { notifyEvent } = useTutorial();
+  const { isDragging, dragSourceSlotId } = useDrag();
   const [openingPackSlot, setOpeningPackSlot] = useState<number | null>(null);
   const [openPackTarget, setOpenPackTarget] = useState<number | null>(null);
   const [inventoryMessage, setInventoryMessage] = useState<string | null>(null);
@@ -50,6 +54,7 @@ export function InventoryPanel({ menuPosition }: InventoryPanelProps) {
 
     setInventoryMessage(null);
     setOpenPackTarget(slotId);
+    notifyEvent("pack-clicked");
   };
 
   const requestDiscard = (slotId: number) => {
@@ -65,14 +70,19 @@ export function InventoryPanel({ menuPosition }: InventoryPanelProps) {
     setDiscardTarget({ slotId, label });
   };
 
+  const packSlotId = inventory.findIndex(
+    (entry) => entry !== null && isSeedPack(entry.itemId),
+  );
+  const seedSlotId = inventory.findIndex(
+    (entry) =>
+      entry !== null &&
+      entry.itemId === CORN_SEED_ITEM.id &&
+      entry.rarity !== undefined,
+  );
+
   return (
     <>
-      <InventorySlotBoard
-        menuPosition={menuPosition}
-        occupiedSlotIds={inventory
-          .map((entry, index) => (entry !== null ? index : -1))
-          .filter((index) => index >= 0)}
-      />
+      <InventorySlotBoard menuPosition={menuPosition} />
 
       {INVENTORY_SLOTS.map((slot) => {
         const entry = inventory[slot.id];
@@ -84,6 +94,13 @@ export function InventoryPanel({ menuPosition }: InventoryPanelProps) {
           <div
             key={slot.id}
             className="pointer-events-auto absolute z-[47]"
+            data-tutorial={
+              slot.id === packSlotId
+                ? "inventory-pack"
+                : slot.id === seedSlotId
+                  ? "inventory-seed"
+                  : undefined
+            }
             style={{
               left: screen.x - itemSize / 2,
               top: screen.y - itemSize / 2,
@@ -92,11 +109,19 @@ export function InventoryPanel({ menuPosition }: InventoryPanelProps) {
             }}
           >
             <InventoryItemVisual
+              slotId={slot.id}
               entry={entry}
               itemSize={itemSize}
               selected={plantingSeedSlot === slot.id}
+              isDragSource={isDragging && dragSourceSlotId === slot.id}
               onOpenPack={() => tryOpenPack(slot.id)}
-              onSelectSeed={() => selectPlantingSeed(slot.id)}
+              onSelectSeed={() => {
+                const wasSelected = plantingSeedSlot === slot.id;
+                selectPlantingSeed(slot.id);
+                if (!wasSelected) {
+                  notifyEvent("seed-selected");
+                }
+              }}
               onDiscard={() => requestDiscard(slot.id)}
             />
           </div>
@@ -105,7 +130,7 @@ export function InventoryPanel({ menuPosition }: InventoryPanelProps) {
 
       {plantingSeedSlot !== null ? (
         <div className="pointer-events-none absolute top-20 left-1/2 z-[48] -translate-x-1/2 rounded-lg border border-farm-sun/40 bg-black/85 px-3 py-2 text-xs text-farm-sun shadow-lg">
-          Click a glowing furrow to plant your seed.
+          Click or drag your seed onto a glowing furrow to plant.
         </div>
       ) : null}
 
@@ -128,10 +153,12 @@ export function InventoryPanel({ menuPosition }: InventoryPanelProps) {
         message={`Open ${SEED_PACK_TOOLTIP.title}? ${SEED_PACK_TOOLTIP.description} This cannot be undone.`}
         confirmLabel="Open pack"
         confirmTone="primary"
+        confirmTutorialId="confirm-open-pack"
         onConfirm={() => {
           if (openPackTarget === null) return;
           setOpeningPackSlot(openPackTarget);
           setOpenPackTarget(null);
+          notifyEvent("pack-confirmed");
         }}
         onCancel={() => setOpenPackTarget(null)}
       />

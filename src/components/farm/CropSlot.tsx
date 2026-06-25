@@ -6,6 +6,7 @@ import { PLANT_SPRITE_SIZE } from "@/lib/plotBoard";
 import { rarityTintForSeed } from "@/lib/plantSprites";
 import type { CropKind } from "@/lib/plantSprites";
 import { SEED_STATS } from "@/lib/seedConfig";
+import { useTutorial } from "@/context/TutorialProvider";
 import { CropTimer } from "./CropTimer";
 import { HarvestFloatPopup } from "./HarvestFloatPopup";
 import { PlantSprite } from "./PlantSprite";
@@ -20,6 +21,8 @@ type CropSlotProps = {
   now: number;
   planted?: PlantedCrop;
   plantable?: boolean;
+  acceptsSeedDrop?: boolean;
+  tutorialHighlight?: boolean;
   onPlant?: () => void;
   onUproot?: () => void;
 };
@@ -39,6 +42,8 @@ export function CropSlot({
   now,
   planted,
   plantable = false,
+  acceptsSeedDrop = false,
+  tutorialHighlight = false,
   onPlant,
   onUproot,
 }: CropSlotProps) {
@@ -48,6 +53,7 @@ export function CropSlot({
   const markerSize = Math.max(22, 18 * scale);
   const [harvestPopup, setHarvestPopup] = useState<LocalHarvestPopup | null>(null);
   const prevCycleStartedAtRef = useRef<number | null>(null);
+  const { notifyEvent, isStep } = useTutorial();
 
   useEffect(() => {
     if (!planted) {
@@ -71,11 +77,14 @@ export function CropSlot({
           id: `${plotIndex}-${slotIndex}-${planted.cycleStartedAt}`,
           cornAmount: SEED_STATS[planted.rarity].cornPerCycle,
         });
+        if (isStep("wait-harvest")) {
+          notifyEvent("harvest-received");
+        }
       }
     }
 
     prevCycleStartedAtRef.current = planted.cycleStartedAt;
-  }, [now, planted, plotIndex, slotIndex]);
+  }, [isStep, notifyEvent, now, planted, plotIndex, slotIndex]);
 
   if (planted) {
     const { progress } = getCycleProgress(planted, now);
@@ -95,6 +104,7 @@ export function CropSlot({
         data-slot={slotIndex}
         data-asset-slot="crop"
         data-state="planted"
+        data-tutorial={tutorialHighlight ? "furrow" : undefined}
         aria-label={`Plot ${plotIndex + 1}, slot ${slotIndex + 1}`}
       >
         {harvestPopup ? (
@@ -117,25 +127,35 @@ export function CropSlot({
     );
   }
 
+  const showPlantable = plantable || acceptsSeedDrop;
+  const dropWidth = acceptsSeedDrop ? plantWidth : markerSize;
+  const dropHeight = acceptsSeedDrop ? plantHeight : markerSize;
+  const dropLeft = acceptsSeedDrop ? x - plantWidth / 2 : x - markerSize / 2;
+  const dropTop = acceptsSeedDrop ? y - plantHeight : y - markerSize / 2;
+
   return (
     <button
       type="button"
       onClick={() => {
         if (plantable) onPlant?.();
       }}
+      data-drop-target={showPlantable ? "crop" : undefined}
       className={`absolute ${
-        plantable ? "crop-slot--plantable cursor-pointer" : "cursor-default opacity-0"
+        showPlantable
+          ? `crop-slot--plantable cursor-pointer ${acceptsSeedDrop ? "z-[12]" : ""}`
+          : "cursor-default opacity-0"
       }`}
       style={{
-        left: x - markerSize / 2,
-        top: y - markerSize / 2,
-        width: markerSize,
-        height: markerSize,
+        left: dropLeft,
+        top: dropTop,
+        width: dropWidth,
+        height: dropHeight,
       }}
       data-plot={plotIndex}
       data-slot={slotIndex}
       data-asset-slot="crop"
-      data-state={plantable ? "plantable" : "empty"}
+      data-state={showPlantable ? "plantable" : "empty"}
+      data-tutorial={tutorialHighlight ? "furrow" : undefined}
       aria-label={`Plot ${plotIndex + 1}, slot ${slotIndex + 1}`}
     />
   );

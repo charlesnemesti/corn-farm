@@ -76,6 +76,21 @@ body {
   color: #ffffff;
 }
 
+@keyframes tutorial-spotlight-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px rgba(255, 200, 87, 0.85);
+  }
+
+  50% {
+    box-shadow: 0 0 0 4px rgba(255, 200, 87, 1), 0 0 16px rgba(255, 200, 87, 0.45);
+  }
+}
+
+.tutorial-spotlight {
+  animation: tutorial-spotlight-pulse 1.4s ease-in-out infinite;
+}
+
 @keyframes harvest-float-up {
   0% {
     opacity: 0;
@@ -157,6 +172,12 @@ body {
   }
 }
 
+.drag-ghost {
+  opacity: 0.92;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
+}
+
 .seed-pack-shake {
   animation: seed-pack-shake 0.45s ease-in-out infinite;
 }
+

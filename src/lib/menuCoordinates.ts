@@ -1,6 +1,27 @@
 // NOTE: All code must stay in English, even when requirements arrive in Spanish.
 
-import { FARM_MENU, type ScreenPosition } from "./uiConfig";
+import { designToScreen, type CoverTransform } from "@/hooks/useCoverTransform";
+import { FARM_MENU, getGameMenuDisplaySize, type ScreenPosition } from "./uiConfig";
+
+export function getGameMenuScreenPosition(
+  designAnchor: ScreenPosition,
+  transform: CoverTransform,
+): ScreenPosition {
+  const screen = designToScreen(designAnchor.x, designAnchor.y, transform);
+  const { width: menuWidth, height: menuHeight } = getGameMenuDisplaySize();
+  const margin = 8;
+
+  return {
+    x: Math.min(
+      Math.max(margin, screen.x),
+      transform.viewportWidth - menuWidth - margin,
+    ),
+    y: Math.min(
+      Math.max(margin, screen.y),
+      transform.viewportHeight - menuHeight - margin,
+    ),
+  };
+}
 
 export function getMenuScale(): number {
   return FARM_MENU.displayWidth / FARM_MENU.width;

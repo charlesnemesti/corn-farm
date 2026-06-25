@@ -8,16 +8,32 @@ export const FARM_MENU = {
   displayWidth: 464,
 } as const;
 
+/** Corn Farm title logo centered on the menu's top wooden plaque. */
+export const MENU_TITLE = {
+  src: "/assets/ui/corn-farm-title.png",
+  width: 1000,
+  height: 529,
+  anchorX: 566,
+  anchorY: 100,
+  displayWidth: 450,
+  /** Fine-tune position in rendered menu pixels. */
+  screenOffsetX: -15,
+  screenOffsetY: 25,
+} as const;
+
 export type ScreenPosition = {
   x: number;
   y: number;
 };
 
-/** Default screen position for the draggable game menu panel. */
-export const GAME_MENU_POSITION: ScreenPosition = {
-  x: 24,
-  y: 88,
+/** Top-left anchor in farm-scene.png design space (1024×571). */
+export const GAME_MENU_DESIGN_ANCHOR: ScreenPosition = {
+  x: 838,
+  y: 284,
 };
+
+/** @deprecated Alias for GAME_MENU_DESIGN_ANCHOR (design space, not screen pixels). */
+export const GAME_MENU_POSITION = GAME_MENU_DESIGN_ANCHOR;
 
 /** First stats line anchor in MENU.png space (centered under the Stats divider). */
 export const STATS_TEXT_ANCHOR = {

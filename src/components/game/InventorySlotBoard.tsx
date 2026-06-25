@@ -5,38 +5,38 @@ import {
   INVENTORY_SLOTS,
   type InventorySlot,
 } from "@/lib/inventoryBoard";
+import { useDrag } from "@/context/DragProvider";
 import { getMenuScale, menuToScreen } from "@/lib/menuCoordinates";
 import type { ScreenPosition } from "@/lib/uiConfig";
 
 type InventorySlotBoardProps = {
   menuPosition: ScreenPosition;
   slots?: InventorySlot[];
-  occupiedSlotIds?: number[];
 };
 
-// Invisible inventory hitboxes aligned to the menu overlay.
+// Inventory drop zones — visible while dragging to reorder items.
 export function InventorySlotBoard({
   menuPosition,
   slots = INVENTORY_SLOTS,
-  occupiedSlotIds = [],
 }: InventorySlotBoardProps) {
+  const { isDragging } = useDrag();
   const scale = getMenuScale();
   const hitSize = INVENTORY_SLOT_SIZE * scale;
-  const occupied = new Set(occupiedSlotIds);
 
   return (
     <>
       {slots.map((slot) => {
         const screen = menuToScreen(slot.x, slot.y, menuPosition);
-        const isOccupied = occupied.has(slot.id);
 
         return (
-          <button
+          <div
             key={slot.id}
-            type="button"
-            disabled={isOccupied}
-            className={`absolute z-[46] opacity-0 ${
-              isOccupied ? "pointer-events-none" : "cursor-pointer"
+            data-drop-target="inventory"
+            data-inventory-slot={slot.id}
+            className={`absolute rounded-md border ${
+              isDragging
+                ? "pointer-events-auto z-[49] border-farm-sun/35 bg-farm-sun/10"
+                : "pointer-events-none z-[46] border-transparent opacity-0"
             }`}
             style={{
               left: screen.x - hitSize / 2,
@@ -44,9 +44,7 @@ export function InventorySlotBoard({
               width: hitSize,
               height: hitSize,
             }}
-            aria-label={`Inventory slot ${slot.row + 1}-${slot.col + 1}`}
-            data-inventory-row={slot.row}
-            data-inventory-col={slot.col}
+            aria-hidden={!isDragging}
           />
         );
       })}

@@ -14,7 +14,8 @@ import {
   INVENTORY_SLOTS,
   type InventorySlot,
 } from "@/lib/inventoryBoard";
-import { GAME_MENU_POSITION, type ScreenPosition } from "@/lib/uiConfig";
+import { GAME_MENU_DESIGN_ANCHOR, type ScreenPosition } from "@/lib/uiConfig";
+import { useCoverTransform } from "@/hooks/useCoverTransform";
 
 const SLOT_STORAGE_KEY = "solfarm-slot-calibration-v2";
 const ROUTE_STORAGE_KEY = "solfarm-route-calibration";
@@ -176,7 +177,7 @@ export function serializeRoutePoints(points: RoutePoint[]): string {
 }
 
 export function serializeGameMenuPosition(position: ScreenPosition): string {
-  return `export const GAME_MENU_POSITION = { x: ${Math.round(position.x)}, y: ${Math.round(position.y)} };`;
+  return `export const GAME_MENU_DESIGN_ANCHOR = { x: ${Math.round(position.x)}, y: ${Math.round(position.y)} };`;
 }
 
 export function serializeInventorySlots(slots: InventorySlot[]): string {
@@ -189,15 +190,18 @@ export function serializeInventorySlots(slots: InventorySlot[]): string {
 }
 
 export function useSlotCalibration() {
+  const coverTransform = useCoverTransform();
   const [slots, setSlots] = useState<PlotSlotConfig[]>(() =>
     cloneSlots(PLOT_SLOTS),
   );
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>(() =>
     cloneRoute(ROUTE_POINTS),
   );
-  const [gameMenuPosition, setGameMenuPosition] = useState<ScreenPosition>(() => ({
-    ...GAME_MENU_POSITION,
-  }));
+  const [gameMenuDesignAnchor, setGameMenuDesignAnchor] = useState<ScreenPosition>(
+    () => ({
+      ...GAME_MENU_DESIGN_ANCHOR,
+    }),
+  );
   const [inventorySlots, setInventorySlots] = useState<InventorySlot[]>(() =>
     cloneInventory(INVENTORY_SLOTS),
   );
@@ -269,9 +273,11 @@ export function useSlotCalibration() {
       const deltaX = dx * step;
       const deltaY = dy * step;
       if (target.kind === "gameMenu") {
-        setGameMenuPosition((prev) => ({
-          x: prev.x + deltaX,
-          y: prev.y + deltaY,
+        const designDeltaX = deltaX / coverTransform.scale;
+        const designDeltaY = deltaY / coverTransform.scale;
+        setGameMenuDesignAnchor((prev) => ({
+          x: prev.x + designDeltaX,
+          y: prev.y + designDeltaY,
         }));
         return;
       }
@@ -285,7 +291,7 @@ export function useSlotCalibration() {
         applyCropDelta(deltaX, deltaY);
       }
     },
-    [applyCropDelta, applyInventoryDelta, applyRouteDelta, step, target],
+    [applyCropDelta, applyInventoryDelta, applyRouteDelta, coverTransform.scale, step, target],
   );
 
   const adjustColumnSpacing = useCallback(
@@ -438,7 +444,7 @@ export function useSlotCalibration() {
 
   const reset = useCallback(() => {
     if (target.kind === "gameMenu") {
-      setGameMenuPosition({ ...GAME_MENU_POSITION });
+      setGameMenuDesignAnchor({ ...GAME_MENU_DESIGN_ANCHOR });
       return;
     }
 
@@ -465,7 +471,7 @@ export function useSlotCalibration() {
   const copyConfig = useCallback(async () => {
     const text =
       target.kind === "gameMenu"
-        ? serializeGameMenuPosition(gameMenuPosition)
+        ? serializeGameMenuPosition(gameMenuDesignAnchor)
         : isInventoryTarget(target)
           ? serializeInventorySlots(inventorySlots)
           : isRouteTarget(target)
@@ -474,14 +480,13 @@ export function useSlotCalibration() {
     await navigator.clipboard.writeText(text);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
-  }, [gameMenuPosition, inventorySlots, routePoints, slots, target]);
+  }, [gameMenuDesignAnchor, inventorySlots, routePoints, slots, target]);
 
   return {
     slots,
     routePoints,
-    gameMenuPosition,
+    gameMenuDesignAnchor,
     inventorySlots,
-    setGameMenuPosition,
     setInventorySlotPosition,
     hydrated,
     target,

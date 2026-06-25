@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useDrag } from "@/context/DragProvider";
 import { useGame } from "@/context/GameProvider";
+import { useTutorial } from "@/context/TutorialProvider";
 import { designToScreen, type CoverTransform } from "@/hooks/useCoverTransform";
 import type { PlotSlotConfig } from "@/lib/plotBoard";
 import { PLOT_SLOTS } from "@/lib/plotBoard";
@@ -33,9 +35,30 @@ export function PlotBoard({
     getCropAt,
     uprootCrop,
   } = useGame();
+  const { notifyEvent, isStep, tutorialCrop } = useTutorial();
+  const { isDraggingSeed } = useDrag();
   const [uprootTarget, setUprootTarget] = useState<UprootTarget | null>(null);
 
   const plantingMode = plantingSeedSlot !== null;
+
+  let tutorialPlantSlot: { plotId: number; slotId: number } | null = null;
+  if (isStep("plant-seed") && plantingMode) {
+    for (const plot of slots) {
+      if (!isPlotRowUnlocked(plot.plotId)) continue;
+      for (let slotIndex = 0; slotIndex < plot.slots.length; slotIndex++) {
+        if (
+          !getCropAt(plot.plotId, slotIndex) &&
+          isSlotPlantable(plot.plotId, slotIndex)
+        ) {
+          tutorialPlantSlot = { plotId: plot.plotId, slotId: slotIndex };
+          break;
+        }
+      }
+      if (tutorialPlantSlot) break;
+    }
+  }
+
+  const tutorialHarvestSlot = isStep("wait-harvest") ? tutorialCrop : null;
 
   return (
     <>
@@ -49,6 +72,15 @@ export function PlotBoard({
               const planted = getCropAt(plot.plotId, slotIndex);
               const plantable =
                 plantingMode && !planted && isSlotPlantable(plot.plotId, slotIndex);
+              const acceptsSeedDrop =
+                isDraggingSeed &&
+                !planted &&
+                isSlotPlantable(plot.plotId, slotIndex);
+              const isTutorialFurrow =
+                (tutorialPlantSlot?.plotId === plot.plotId &&
+                  tutorialPlantSlot?.slotId === slotIndex) ||
+                (tutorialHarvestSlot?.plotId === plot.plotId &&
+                  tutorialHarvestSlot?.slotId === slotIndex);
 
               return (
                 <CropSlot
@@ -61,7 +93,17 @@ export function PlotBoard({
                   now={now}
                   planted={planted}
                   plantable={plantable}
-                  onPlant={() => plantSelectedSeed(plot.plotId, slotIndex)}
+                  acceptsSeedDrop={acceptsSeedDrop}
+                  tutorialHighlight={isTutorialFurrow}
+                  onPlant={() => {
+                    const result = plantSelectedSeed(plot.plotId, slotIndex);
+                    if (result === "success") {
+                      notifyEvent("seed-planted", {
+                        plotId: plot.plotId,
+                        slotId: slotIndex,
+                      });
+                    }
+                  }}
                   onUproot={
                     !plantingMode && planted
                       ? () =>

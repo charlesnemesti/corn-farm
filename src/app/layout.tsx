@@ -5,7 +5,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Header } from "@/components/layout/Header";
 import { ModeSelectOverlay } from "@/components/game/ModeSelectOverlay";
+import { TutorialOverlay } from "@/components/game/TutorialOverlay";
+import { DragProvider } from "@/context/DragProvider";
 import { GameProvider } from "@/context/GameProvider";
+import { TutorialProvider } from "@/context/TutorialProvider";
 import { BackgroundMusicProvider } from "@/context/BackgroundMusicProvider";
 import { PlayModeProvider } from "@/context/PlayModeProvider";
 import { SolanaWalletProvider } from "@/components/providers/SolanaWalletProvider";
@@ -41,9 +44,14 @@ export default function RootLayout({
           <PlayModeProvider>
             <BackgroundMusicProvider>
               <GameProvider>
-                <Header />
-                {children}
-                <ModeSelectOverlay />
+                <TutorialProvider>
+                  <DragProvider>
+                    <Header />
+                    {children}
+                    <TutorialOverlay />
+                    <ModeSelectOverlay />
+                  </DragProvider>
+                </TutorialProvider>
               </GameProvider>
             </BackgroundMusicProvider>
           </PlayModeProvider>

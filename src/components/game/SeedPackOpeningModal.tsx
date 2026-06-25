@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useGame } from "@/context/GameProvider";
+import { useTutorial } from "@/context/TutorialProvider";
 import { SEED_PACK_ITEM } from "@/lib/shopConfig";
 import {
   RARITY_GLOW_CLASS,
@@ -66,6 +67,7 @@ export function SeedPackOpeningModal({
   onClose,
 }: SeedPackOpeningModalProps) {
   const { commitOpenedSeeds } = useGame();
+  const { notifyEvent } = useTutorial();
   const rolledSeeds = useMemo(() => rollPackSeeds(), []);
   const [phase, setPhase] = useState<Phase>("pack");
   const [revealedCount, setRevealedCount] = useState(0);
@@ -95,6 +97,7 @@ export function SeedPackOpeningModal({
 
   const handleSendToInventory = () => {
     commitOpenedSeeds(packSlotIndex, rolledSeeds);
+    notifyEvent("seeds-collected");
     onClose();
   };
 
@@ -144,6 +147,7 @@ export function SeedPackOpeningModal({
           <button
             type="button"
             onClick={handleSendToInventory}
+            data-tutorial="send-to-inventory"
             className="mt-6 w-full rounded-xl bg-farm-sun py-3 text-sm font-bold text-farm-wood transition hover:bg-farm-sun-dark"
           >
             Send to inventory

@@ -22,6 +22,7 @@ import {
 import { applyHarvestProgress } from "@/lib/harvestProgress";
 import { CORN_SEED_ITEM } from "@/lib/itemConfig";
 import { getLevelFromTotalXp } from "@/lib/levelConfig";
+import { SEED_STATS } from "@/lib/seedConfig";
 import {
   canPurchasePlotRow,
   getPlotUnlockConfig,
@@ -35,6 +36,8 @@ import {
   SEEDS_PER_PACK,
 } from "@/lib/seedConfig";
 import type { ShopItem } from "@/lib/shopConfig";
+import { TUTORIAL_HARVEST_WAIT_MS, clearTutorialCompleted } from "@/lib/tutorialConfig";
+import { clearTreasuryState } from "@/lib/treasuryState";
 
 type BuyResult = "success" | "insufficient-corn" | "inventory-full";
 type CommitSeedsResult = "success" | "inventory-full" | "invalid-pack";
@@ -55,15 +58,24 @@ type GameContextValue = {
   commitOpenedSeeds: (packSlotIndex: number, seeds: RolledSeed[]) => CommitSeedsResult;
   selectPlantingSeed: (inventorySlotIndex: number | null) => void;
   plantSelectedSeed: (plotId: number, slotId: number) => PlantResult;
+  plantSeedFromSlot: (
+    inventorySlotIndex: number,
+    plotId: number,
+    slotId: number,
+  ) => PlantResult;
+  moveInventoryItem: (fromSlot: number, toSlot: number) => boolean;
   isSlotPlantable: (plotId: number, slotId: number) => boolean;
   isPlotRowUnlocked: (plotId: number) => boolean;
   unlockPlotRow: (plotId: number) => UnlockPlotResult;
   getCropAt: (plotId: number, slotId: number) => PlantedCrop | undefined;
   uprootCrop: (plotId: number, slotId: number) => boolean;
   discardInventoryItem: (slotIndex: number) => boolean;
+  accelerateCropCycle: (plotId: number, slotId: number) => void;
   resetSavedGame: () => void;
   addDebugCorn: (amount: number) => void;
   addDebugXp: (amount: number) => void;
+  creditTreasuryCorn: (amount: number) => void;
+  debitTreasuryCorn: (amount: number) => boolean;
 };
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -261,57 +273,68 @@ export function GameProvider({ children }: { children: ReactNode }) {
     [state.plantedCrops],
   );
 
+  const plantSeedAt = useCallback(
+    (
+      prev: GameState,
+      inventorySlot: number,
+      plotId: number,
+      slotId: number,
+    ): { next: GameState; result: PlantResult } => {
+      const seedEntry = prev.inventory[inventorySlot];
+      if (!isPlantableSeed(seedEntry)) {
+        return { next: prev, result: "invalid-seed" };
+      }
+
+      if (!isPlotRowUnlocked(plotId, prev.unlockedPlotIds)) {
+        return { next: prev, result: "slot-unavailable" };
+      }
+
+      if (findPlantedCrop(prev.plantedCrops, plotId, slotId)) {
+        return { next: prev, result: "slot-unavailable" };
+      }
+
+      const nextInventory = [...prev.inventory];
+      if (seedEntry.quantity > 1) {
+        nextInventory[inventorySlot] = {
+          ...seedEntry,
+          quantity: seedEntry.quantity - 1,
+        };
+      } else {
+        nextInventory[inventorySlot] = null;
+      }
+
+      const next: GameState = {
+        ...prev,
+        inventory: nextInventory,
+        plantedCrops: [
+          ...prev.plantedCrops,
+          {
+            plotId,
+            slotId,
+            rarity: seedEntry.rarity!,
+            cycleStartedAt: Date.now(),
+          },
+        ],
+      };
+
+      return { next, result: "success" };
+    },
+    [],
+  );
+
   const plantSelectedSeed = useCallback(
     (plotId: number, slotId: number): PlantResult => {
+      if (plantingSeedSlot === null) return "no-seed-selected";
+
       let result: PlantResult = "success";
 
       setState((prev) => {
-        if (plantingSeedSlot === null) {
-          result = "no-seed-selected";
-          return prev;
-        }
+        const planted = plantSeedAt(prev, plantingSeedSlot, plotId, slotId);
+        result = planted.result;
+        if (planted.result !== "success") return prev;
 
-        const seedEntry = prev.inventory[plantingSeedSlot];
-        if (!isPlantableSeed(seedEntry)) {
-          result = "invalid-seed";
-          return prev;
-        }
-
-        if (!isPlotRowUnlocked(plotId, prev.unlockedPlotIds)) {
-          result = "slot-unavailable";
-          return prev;
-        }
-
-        if (findPlantedCrop(prev.plantedCrops, plotId, slotId)) {
-          result = "slot-unavailable";
-          return prev;
-        }
-
-        const nextInventory = [...prev.inventory];
-        if (seedEntry.quantity > 1) {
-          nextInventory[plantingSeedSlot] = {
-            ...seedEntry,
-            quantity: seedEntry.quantity - 1,
-          };
-        } else {
-          nextInventory[plantingSeedSlot] = null;
-        }
-
-        const next: GameState = {
-          ...prev,
-          inventory: nextInventory,
-          plantedCrops: [
-            ...prev.plantedCrops,
-            {
-              plotId,
-              slotId,
-              rarity: seedEntry.rarity!,
-              cycleStartedAt: Date.now(),
-            },
-          ],
-        };
-        persistState(next);
-        return next;
+        persistState(planted.next);
+        return planted.next;
       });
 
       if (result === "success") {
@@ -320,8 +343,71 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
       return result;
     },
-    [plantingSeedSlot],
+    [plantSeedAt, plantingSeedSlot],
   );
+
+  const plantSeedFromSlot = useCallback(
+    (inventorySlot: number, plotId: number, slotId: number): PlantResult => {
+      let result: PlantResult = "success";
+
+      setState((prev) => {
+        const planted = plantSeedAt(prev, inventorySlot, plotId, slotId);
+        result = planted.result;
+        if (planted.result !== "success") return prev;
+
+        persistState(planted.next);
+        return planted.next;
+      });
+
+      if (result === "success") {
+        setPlantingSeedSlot((current) =>
+          current === inventorySlot ? null : current,
+        );
+      }
+
+      return result;
+    },
+    [plantSeedAt],
+  );
+
+  const moveInventoryItem = useCallback((fromSlot: number, toSlot: number): boolean => {
+    if (fromSlot === toSlot) return false;
+
+    let moved = false;
+
+    setState((prev) => {
+      if (fromSlot < 0 || toSlot < 0 || fromSlot >= prev.inventory.length) {
+        return prev;
+      }
+      if (toSlot >= prev.inventory.length) return prev;
+
+      const fromEntry = prev.inventory[fromSlot];
+      if (!fromEntry) return prev;
+
+      moved = true;
+      const nextInventory = [...prev.inventory];
+      const toEntry = nextInventory[toSlot];
+      nextInventory[toSlot] = fromEntry;
+      nextInventory[fromSlot] = toEntry ?? null;
+
+      const next: GameState = {
+        ...prev,
+        inventory: nextInventory,
+      };
+      persistState(next);
+      return next;
+    });
+
+    if (moved) {
+      setPlantingSeedSlot((current) => {
+        if (current === fromSlot) return toSlot;
+        if (current === toSlot) return fromSlot;
+        return current;
+      });
+    }
+
+    return moved;
+  }, []);
 
   const uprootCrop = useCallback((plotId: number, slotId: number): boolean => {
     let removed = false;
@@ -342,6 +428,30 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
 
     return removed;
+  }, []);
+
+  const accelerateCropCycle = useCallback((plotId: number, slotId: number) => {
+    setState((prev) => {
+      const cropIndex = prev.plantedCrops.findIndex(
+        (crop) => crop.plotId === plotId && crop.slotId === slotId,
+      );
+      if (cropIndex === -1) return prev;
+
+      const crop = prev.plantedCrops[cropIndex];
+      const cycleMs = SEED_STATS[crop.rarity].harvestCycleSeconds * 1000;
+      const acceleratedStart =
+        Date.now() - cycleMs + TUTORIAL_HARVEST_WAIT_MS;
+
+      const nextCrops = [...prev.plantedCrops];
+      nextCrops[cropIndex] = {
+        ...crop,
+        cycleStartedAt: acceleratedStart,
+      };
+
+      const next: GameState = { ...prev, plantedCrops: nextCrops };
+      persistState(next);
+      return next;
+    });
   }, []);
 
   const discardInventoryItem = useCallback((slotIndex: number): boolean => {
@@ -407,10 +517,45 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   const resetSavedGame = useCallback(() => {
     clearAllSavedGameState();
+    clearTreasuryState();
+    clearTutorialCompleted();
     const fresh = createInitialGameState();
     setState(fresh);
     setPlantingSeedSlot(null);
     saveGameState(fresh);
+  }, []);
+
+  const creditTreasuryCorn = useCallback((amount: number) => {
+    if (amount <= 0) return;
+
+    setState((prev) => {
+      const next: GameState = {
+        ...prev,
+        corn: prev.corn + amount,
+      };
+      persistState(next);
+      return next;
+    });
+  }, []);
+
+  const debitTreasuryCorn = useCallback((amount: number) => {
+    if (amount <= 0) return false;
+
+    let debited = false;
+
+    setState((prev) => {
+      if (prev.corn < amount) return prev;
+
+      debited = true;
+      const next: GameState = {
+        ...prev,
+        corn: prev.corn - amount,
+      };
+      persistState(next);
+      return next;
+    });
+
+    return debited;
   }, []);
 
   const addDebugCorn = useCallback((amount: number) => {
@@ -457,29 +602,39 @@ export function GameProvider({ children }: { children: ReactNode }) {
       commitOpenedSeeds,
       selectPlantingSeed,
       plantSelectedSeed,
+      plantSeedFromSlot,
+      moveInventoryItem,
       isSlotPlantable,
       isPlotRowUnlocked: isPlotRowUnlockedForState,
       unlockPlotRow,
       getCropAt,
       uprootCrop,
       discardInventoryItem,
+      accelerateCropCycle,
       resetSavedGame,
       addDebugCorn,
       addDebugXp,
+      creditTreasuryCorn,
+      debitTreasuryCorn,
     }),
     [
       addDebugCorn,
       addDebugXp,
+      accelerateCropCycle,
       buyItem,
       canOpenSeedPack,
       commitOpenedSeeds,
+      creditTreasuryCorn,
+      debitTreasuryCorn,
       discardInventoryItem,
       getCropAt,
       hydrated,
       isPlotRowUnlockedForState,
       isSlotPlantable,
+      moveInventoryItem,
       now,
       plantSelectedSeed,
+      plantSeedFromSlot,
       plantingSeedSlot,
       playerLevel,
       resetSavedGame,

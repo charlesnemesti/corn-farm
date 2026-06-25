@@ -2,10 +2,12 @@
 
 import { useState } from "react";
 import { useGame } from "@/context/GameProvider";
+import { useTutorial } from "@/context/TutorialProvider";
 import { SEED_PACK_ITEM } from "@/lib/shopConfig";
 
 export function SeedShopPanel() {
   const { corn, buyItem } = useGame();
+  const { notifyEvent } = useTutorial();
   const [message, setMessage] = useState<string | null>(null);
   const item = SEED_PACK_ITEM;
   const canAfford = corn >= item.priceCorn;
@@ -15,6 +17,7 @@ export function SeedShopPanel() {
     switch (result) {
       case "success":
         setMessage("Seeds Pack added to inventory.");
+        notifyEvent("pack-purchased");
         break;
       case "insufficient-corn":
         setMessage("Not enough $CORN.");
@@ -52,6 +55,7 @@ export function SeedShopPanel() {
           type="button"
           onClick={handleBuy}
           disabled={!canAfford}
+          data-tutorial="shop-buy"
           className="mt-3 w-full rounded-lg bg-farm-sun py-2 text-xs font-bold text-farm-wood transition hover:bg-farm-sun-dark disabled:cursor-not-allowed disabled:opacity-45"
         >
           Buy

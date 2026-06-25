@@ -7,6 +7,7 @@ type ConfirmDialogProps = {
   confirmLabel?: string;
   cancelLabel?: string;
   confirmTone?: "danger" | "primary";
+  confirmTutorialId?: string;
   onConfirm: () => void;
   onCancel: () => void;
 };
@@ -19,6 +20,7 @@ export function ConfirmDialog({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   confirmTone = "danger",
+  confirmTutorialId,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) {
@@ -51,7 +53,12 @@ export function ConfirmDialog({
               {cancelLabel}
             </button>
           ) : null}
-          <button type="button" onClick={onConfirm} className={confirmClassName}>
+          <button
+            type="button"
+            onClick={onConfirm}
+            data-tutorial={confirmTutorialId}
+            className={confirmClassName}
+          >
             {confirmLabel}
           </button>
         </div>

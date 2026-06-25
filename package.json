@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "generate-treasury": "node scripts/generate-treasury.mjs"
   },
   "dependencies": {
     "@solana/wallet-adapter-base": "^0.9.27",

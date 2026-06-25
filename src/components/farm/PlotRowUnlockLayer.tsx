@@ -16,7 +16,7 @@ type PlotRowUnlockLayerProps = {
   transform: CoverTransform;
 };
 
-// Locked furrow rows — click to purchase with $CORN once level + prior row requirements are met.
+// Locked rows — label only; click anywhere on the row to unlock.
 export function PlotRowUnlockLayer({ transform }: PlotRowUnlockLayerProps) {
   const { corn, playerLevel, unlockedPlotIds, unlockPlotRow } = useGame();
   const [targetPlotId, setTargetPlotId] = useState<number | null>(null);
@@ -42,9 +42,14 @@ export function PlotRowUnlockLayer({ transform }: PlotRowUnlockLayerProps) {
 
   const canConfirmUnlock = purchaseCheck?.ok === true;
 
+  const openUnlockDialog = (plotId: number) => {
+    setUnlockMessage(null);
+    setTargetPlotId(plotId);
+  };
+
   return (
     <>
-      <div className="pointer-events-none absolute inset-0 z-[15]">
+      <div className="pointer-events-none absolute inset-0 z-[11]">
         {PLOT_SLOTS.map((plot) => {
           if (isPlotRowUnlocked(plot.plotId, unlockedPlotIds)) return null;
 
@@ -58,8 +63,6 @@ export function PlotRowUnlockLayer({ transform }: PlotRowUnlockLayerProps) {
           const maxX = Math.max(...screens.map((point) => point.x));
           const centerY =
             screens.reduce((sum, point) => sum + point.y, 0) / screens.length;
-          const rowHeight = Math.max(26, 32 * transform.scale);
-          const rowWidth = maxX - minX + 48 * transform.scale;
           const check = canPurchasePlotRow(
             plot.plotId,
             unlockedPlotIds,
@@ -67,33 +70,37 @@ export function PlotRowUnlockLayer({ transform }: PlotRowUnlockLayerProps) {
             corn,
           );
           const ready = check.ok;
+          const rowHeight = Math.max(26, 32 * transform.scale);
+          const rowWidth = maxX - minX + 48 * transform.scale;
 
           return (
-            <button
-              key={`lock-row-${plot.plotId}`}
-              type="button"
-              onClick={() => {
-                setUnlockMessage(null);
-                setTargetPlotId(plot.plotId);
-              }}
-              className={`pointer-events-auto absolute flex items-center justify-center rounded-md border px-2 text-[10px] font-semibold shadow-lg backdrop-blur-sm transition hover:bg-black/25 sm:text-xs ${
-                ready
-                  ? "border-farm-sun/40 bg-black/10 text-farm-sun"
-                  : "border-white/15 bg-black/10 text-white/75"
-              }`}
-              style={{
-                left: minX - 24 * transform.scale,
-                top: centerY - rowHeight / 2,
-                width: rowWidth,
-                height: rowHeight,
-              }}
-              aria-label={`Unlock row ${plot.plotId + 1}`}
-            >
-              <span className="truncate">
+            <div key={`lock-row-${plot.plotId}`}>
+              <button
+                type="button"
+                onClick={() => openUnlockDialog(plot.plotId)}
+                className="pointer-events-auto absolute cursor-pointer"
+                style={{
+                  left: minX - 24 * transform.scale,
+                  top: centerY - rowHeight / 2,
+                  width: rowWidth,
+                  height: rowHeight,
+                }}
+                aria-label={`Unlock row ${plot.plotId + 1}`}
+              />
+
+              <p
+                className={`pointer-events-none absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap text-center text-[10px] font-semibold drop-shadow-[0_1px_2px_rgba(0,0,0,0.95)] sm:text-xs ${
+                  ready ? "text-farm-sun" : "text-white/80"
+                }`}
+                style={{
+                  left: (minX + maxX) / 2,
+                  top: centerY,
+                }}
+              >
                 🔒 Row {plot.plotId + 1} · Lv {config.minLevel} ·{" "}
                 {config.cornCost.toLocaleString("en-US")} $CORN
-              </span>
-            </button>
+              </p>
+            </div>
           );
         })}
       </div>
@@ -112,7 +119,7 @@ export function PlotRowUnlockLayer({ transform }: PlotRowUnlockLayerProps) {
         message={dialogMessage}
         confirmLabel={canConfirmUnlock ? "Unlock row" : "Close"}
         cancelLabel={canConfirmUnlock ? "Cancel" : undefined}
-        confirmTone={canConfirmUnlock ? "primary" : "primary"}
+        confirmTone="primary"
         onConfirm={() => {
           if (targetPlotId === null) return;
 

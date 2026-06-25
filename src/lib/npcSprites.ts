@@ -36,7 +36,7 @@ export const SEED_SHOP_SIGN = {
   width: 127,
   height: 256,
   displayWidth: 51,
-  anchor: { x: 920, y: 267 },
+  anchor: { x: 118, y: 267 },
 } as const;
 
 /** Villager feet position relative to the sign bottom-center anchor. */

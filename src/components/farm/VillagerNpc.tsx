@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 import { designToScreen, type CoverTransform } from "@/hooks/useCoverTransform";
 import { useIdleDirectionCycle } from "@/hooks/useIdleDirectionCycle";
-import { getVillagerDesignAnchor, NPC_DISPLAY_SCALE, VILLAGER_NPC, VILLAGER_SPRITE } from "@/lib/npcSprites";
+import { getVillagerDesignAnchor, NPC_DISPLAY_SCALE, VILLAGER_NPC, VILLAGER_SPRITE, SEED_SHOP_SIGN } from "@/lib/npcSprites";
+import { DESIGN_SIZE } from "@/lib/plotBoard";
 import { NpcPopup } from "./NpcPopup";
 import { NpcSprite } from "./NpcSprite";
 
@@ -15,7 +16,7 @@ type VillagerNpcProps = {
   shopContent?: ReactNode;
 };
 
-// Stationary villager on the right path; rotates facing every 2–4 s.
+// Stationary villager by the seed shop sign; rotates facing every 2–4 s.
 export function VillagerNpc({
   transform,
   dialogOpen,
@@ -29,6 +30,8 @@ export function VillagerNpc({
   const spriteScale = transform.scale * NPC_DISPLAY_SCALE;
   const width = VILLAGER_SPRITE.frameWidth * spriteScale;
   const height = VILLAGER_SPRITE.frameHeight * spriteScale;
+  const popupOpensRight =
+    SEED_SHOP_SIGN.anchor.x < DESIGN_SIZE.width / 2;
 
   return (
     <div
@@ -44,6 +47,7 @@ export function VillagerNpc({
         type="button"
         onClick={onOpenDialog}
         className="absolute inset-0 cursor-pointer"
+        data-tutorial="villager"
         aria-label={`Talk to ${VILLAGER_NPC.name}`}
       >
         <NpcSprite
@@ -57,11 +61,19 @@ export function VillagerNpc({
       {dialogOpen ? (
         <div
           className="absolute z-[200]"
-          style={{
-            right: width + 8,
-            top: height / 2,
-            transform: "translateY(-50%)",
-          }}
+          style={
+            popupOpensRight
+              ? {
+                  left: width + 8,
+                  top: height / 2,
+                  transform: "translateY(-50%)",
+                }
+              : {
+                  right: width + 8,
+                  top: height / 2,
+                  transform: "translateY(-50%)",
+                }
+          }
         >
           <NpcPopup
             open

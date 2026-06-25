@@ -1,9 +1,11 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useTutorial } from "@/context/TutorialProvider";
 import { useCoverTransform } from "@/hooks/useCoverTransform";
 import { useSlotCalibration } from "@/hooks/useSlotCalibration";
+import { getGameMenuScreenPosition } from "@/lib/menuCoordinates";
 import { FARMER_NPC } from "@/lib/npcSprites";
 import { FARM_BACKGROUND, PLOT_SLOTS } from "@/lib/plotBoard";
 import { ROUTE_POINTS } from "@/lib/routeConfig";
@@ -33,7 +35,12 @@ function FarmSceneContent() {
   const [showInventoryMarkers, setShowInventoryMarkers] = useState(false);
   const [farmerDialogOpen, setFarmerDialogOpen] = useState(false);
   const [villagerDialogOpen, setVillagerDialogOpen] = useState(false);
+  const { notifyEvent } = useTutorial();
   const sceneReady = transform.ready && calibration.hydrated;
+  const menuScreenPosition = useMemo(
+    () => getGameMenuScreenPosition(calibration.gameMenuDesignAnchor, transform),
+    [calibration.gameMenuDesignAnchor, transform],
+  );
 
   return (
     <div className="farm-scene relative min-h-screen w-full overflow-hidden">
@@ -61,7 +68,10 @@ function FarmSceneContent() {
           <VillagerNpc
             transform={transform}
             dialogOpen={villagerDialogOpen}
-            onOpenDialog={() => setVillagerDialogOpen(true)}
+            onOpenDialog={() => {
+              setVillagerDialogOpen(true);
+              notifyEvent("shop-opened");
+            }}
             onCloseDialog={() => setVillagerDialogOpen(false)}
             shopContent={<SeedShopPanel />}
           />
@@ -74,13 +84,13 @@ function FarmSceneContent() {
           />
 
           <GameMenuPanel
-            position={calibration.gameMenuPosition}
+            position={menuScreenPosition}
             calibratorActive={debug && calibration.target.kind === "gameMenu"}
           />
 
-          <InventoryPanel menuPosition={calibration.gameMenuPosition} />
+          <InventoryPanel menuPosition={menuScreenPosition} />
 
-          <MenuStatsPanel menuPosition={calibration.gameMenuPosition} />
+          <MenuStatsPanel menuPosition={menuScreenPosition} />
 
           {debug ? (
             <>
@@ -99,7 +109,7 @@ function FarmSceneContent() {
               />
 
               <InventoryDebugOverlay
-                menuPosition={calibration.gameMenuPosition}
+                menuPosition={menuScreenPosition}
                 slots={calibration.inventorySlots}
                 target={calibration.target}
                 visible={showInventoryMarkers}

@@ -3,6 +3,7 @@
 import {
   FARM_MENU,
   getGameMenuDisplaySize,
+  MENU_TITLE,
   type ScreenPosition,
 } from "@/lib/uiConfig";
 
@@ -17,6 +18,9 @@ export function GameMenuPanel({
   calibratorActive = false,
 }: GameMenuPanelProps) {
   const { width, height } = getGameMenuDisplaySize();
+  const titleLeft = (MENU_TITLE.anchorX / FARM_MENU.width) * 100;
+  const titleTop = (MENU_TITLE.anchorY / FARM_MENU.height) * 100;
+  const titleWidth = (MENU_TITLE.displayWidth / FARM_MENU.width) * 100;
 
   return (
     <div
@@ -32,6 +36,19 @@ export function GameMenuPanel({
           alt="Game menu"
           draggable={false}
           className="pointer-events-none h-full w-full object-contain pixel-art"
+        />
+
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={MENU_TITLE.src}
+          alt="Corn Farm"
+          draggable={false}
+          className="pointer-events-none absolute z-10 h-auto -translate-x-1/2 -translate-y-1/2 object-contain pixel-art mix-blend-screen"
+          style={{
+            left: `calc(${titleLeft}% + ${MENU_TITLE.screenOffsetX}px)`,
+            top: `calc(${titleTop}% + ${MENU_TITLE.screenOffsetY}px)`,
+            width: `${titleWidth}%`,
+          }}
         />
       </div>
     </div>

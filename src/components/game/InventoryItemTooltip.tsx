@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { useDrag } from "@/context/DragProvider";
 import type { InventoryEntry } from "@/lib/gameState";
 import {
   SEED_PACK_TOOLTIP,
@@ -100,22 +101,27 @@ export function InventoryItemTooltip({ entry, onDiscard }: InventoryItemTooltipP
 }
 
 type InventoryItemVisualProps = {
+  slotId: number;
   entry: InventoryEntry;
   itemSize: number;
   selected?: boolean;
+  isDragSource?: boolean;
   onOpenPack?: () => void;
   onSelectSeed?: () => void;
   onDiscard?: () => void;
 };
 
 export function InventoryItemVisual({
+  slotId,
   entry,
   itemSize,
   selected = false,
+  isDragSource = false,
   onOpenPack,
   onSelectSeed,
   onDiscard,
 }: InventoryItemVisualProps) {
+  const { startPointerDrag, shouldBlockClick } = useDrag();
   const imageSrc = getInventoryItemImage(entry);
   if (!imageSrc) return null;
 
@@ -124,14 +130,20 @@ export function InventoryItemVisual({
 
   return (
     <div
-      className={`group absolute flex cursor-pointer items-center justify-center rounded-lg ${
+      className={`group absolute flex touch-none items-center justify-center rounded-lg ${
         selected ? "ring-2 ring-farm-sun ring-offset-1 ring-offset-transparent" : ""
-      }`}
+      } ${isDragSource ? "pointer-events-none opacity-35" : "cursor-grab active:cursor-grabbing"}`}
       style={{
         width: itemSize,
         height: itemSize,
       }}
+      onPointerDown={(event) => {
+        if (event.button !== 0) return;
+        startPointerDrag(slotId, entry, event.clientX, event.clientY);
+      }}
       onClick={() => {
+        if (shouldBlockClick()) return;
+
         if (isSeedPack(entry.itemId)) {
           onOpenPack?.();
           return;
