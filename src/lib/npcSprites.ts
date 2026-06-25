@@ -11,6 +11,45 @@ export const FARMER_SPRITE = {
 
 export type NpcDirection = (typeof FARMER_SPRITE.directions)[number];
 
+export type NpcWalkAnimation = {
+  framesPerDirection: number;
+  frameDurationMs: number;
+};
+
+export type NpcSpriteSheet = {
+  src?: string;
+  directionSrc?: Record<NpcDirection, string>;
+  frameWidth: number;
+  frameHeight: number;
+  framesPerDirection: number;
+  frameDurationMs?: number;
+  directions?: readonly NpcDirection[];
+};
+
+/** Per-direction horizontal strips (4 walk frames each). */
+export const PIG_SPRITE: NpcSpriteSheet = {
+  directionSrc: {
+    down: "/assets/npcs/pig-walk-down.png",
+    up: "/assets/npcs/pig-walk-up.png",
+    left: "/assets/npcs/pig-walk-left.png",
+    right: "/assets/npcs/pig-walk-right.png",
+  },
+  frameWidth: 32,
+  frameHeight: 32,
+  framesPerDirection: 4,
+  frameDurationMs: 120,
+};
+
+export const PIG_WALK_ANIMATION: NpcWalkAnimation = {
+  framesPerDirection: PIG_SPRITE.framesPerDirection,
+  frameDurationMs: PIG_SPRITE.frameDurationMs ?? 120,
+};
+
+export const PIG_NPC = {
+  id: "pig",
+  name: "Pig",
+} as const;
+
 /** Extra scale applied to all NPC sprites on screen (+50%). */
 export const NPC_DISPLAY_SCALE = 1.5;
 

@@ -20,3 +20,17 @@ export const ROUTE_POINTS: RoutePoint[] = [
   { id: 6, x: 277, y: 468 },
   { id: 7, x: 225, y: 467 },
 ];
+
+export const PIG_ROUTE_POINT_COUNT = 8;
+
+/** Pig patrol waypoints along the right-side path (top to bottom). */
+export const PIG_ROUTE_POINTS: RoutePoint[] = [
+  { id: 0, x: 788, y: 72 },
+  { id: 1, x: 846, y: 135 },
+  { id: 2, x: 838, y: 195 },
+  { id: 3, x: 799, y: 247 },
+  { id: 4, x: 796, y: 286 },
+  { id: 5, x: 797, y: 327 },
+  { id: 6, x: 798, y: 377 },
+  { id: 7, x: 792, y: 424 },
+];

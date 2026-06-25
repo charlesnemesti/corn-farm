@@ -2,21 +2,14 @@ import type { CSSProperties } from "react";
 import {
   FARMER_SPRITE,
   type NpcDirection,
+  type NpcSpriteSheet,
 } from "@/lib/npcSprites";
-
-type SpriteSheet = {
-  src: string;
-  frameWidth: number;
-  frameHeight: number;
-  framesPerDirection: number;
-  directions: readonly NpcDirection[];
-};
 
 type NpcSpriteProps = {
   direction: NpcDirection;
   frame: number;
   scale: number;
-  sheet?: SpriteSheet;
+  sheet?: NpcSpriteSheet;
 };
 
 const DIRECTION_ROW: Record<NpcDirection, number> = {
@@ -26,7 +19,17 @@ const DIRECTION_ROW: Record<NpcDirection, number> = {
   up: 3,
 };
 
-// Renders one NPC frame from a directional spritesheet.
+function resolveStripSrc(sheet: NpcSpriteSheet, direction: NpcDirection): string {
+  if (sheet.directionSrc?.[direction]) {
+    return sheet.directionSrc[direction];
+  }
+  if (!sheet.src) {
+    throw new Error(`NpcSprite missing src for direction "${direction}"`);
+  }
+  return sheet.src;
+}
+
+// Renders one NPC frame from a directional spritesheet or per-direction strip.
 export function NpcSprite({
   direction,
   frame,
@@ -35,20 +38,34 @@ export function NpcSprite({
 }: NpcSpriteProps) {
   const width = sheet.frameWidth * scale;
   const height = sheet.frameHeight * scale;
-  const sheetWidth = sheet.frameWidth * sheet.framesPerDirection * scale;
-  const sheetHeight = sheet.frameHeight * sheet.directions.length * scale;
-  const row = DIRECTION_ROW[direction];
   const clampedFrame = Math.max(
     0,
     Math.min(frame, sheet.framesPerDirection - 1),
   );
+  const usesDirectionStrip = Boolean(sheet.directionSrc?.[direction]);
+  const imageSrc = resolveStripSrc(sheet, direction);
+
+  let backgroundSize: string;
+  let backgroundPosition: string;
+
+  if (usesDirectionStrip) {
+    backgroundSize = `${sheet.frameWidth * sheet.framesPerDirection * scale}px ${height}px`;
+    backgroundPosition = `-${clampedFrame * sheet.frameWidth * scale}px 0px`;
+  } else {
+    const sheetWidth = sheet.frameWidth * sheet.framesPerDirection * scale;
+    const rowCount = sheet.directions?.length ?? 4;
+    const sheetHeight = sheet.frameHeight * rowCount * scale;
+    const row = DIRECTION_ROW[direction];
+    backgroundSize = `${sheetWidth}px ${sheetHeight}px`;
+    backgroundPosition = `-${clampedFrame * sheet.frameWidth * scale}px -${row * sheet.frameHeight * scale}px`;
+  }
 
   const style: CSSProperties = {
     width,
     height,
-    backgroundImage: `url(${sheet.src})`,
-    backgroundSize: `${sheetWidth}px ${sheetHeight}px`,
-    backgroundPosition: `-${clampedFrame * sheet.frameWidth * scale}px -${row * sheet.frameHeight * scale}px`,
+    backgroundImage: `url(${imageSrc})`,
+    backgroundSize,
+    backgroundPosition,
   };
 
   return (

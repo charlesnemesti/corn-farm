@@ -57,6 +57,26 @@ export function getWeatherProductionLabel(weather: WeatherType): string | null {
   }
 }
 
+export const WEATHER_DISPLAY_NAMES: Record<WeatherType, string> = {
+  sunny: "Sunny",
+  rain: "Rain",
+  snow: "Snow",
+  wind: "Wind",
+};
+
+export function getWeatherBonusSummary(weather: WeatherType): string {
+  switch (weather) {
+    case "rain":
+      return "+25% growth and $CORN";
+    case "snow":
+      return "−25% growth speed";
+    case "wind":
+      return "Small uproot chance; seed returned";
+    default:
+      return "Normal growth and $CORN";
+  }
+}
+
 export function returnSeedToInventory(
   state: GameState,
   rarity: SeedRarity,

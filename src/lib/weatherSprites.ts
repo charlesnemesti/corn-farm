@@ -1,7 +1,7 @@
 import type { WeatherType } from "./weatherConfig";
 
 /** Overall opacity for the full-screen weather particle canvas. */
-export const WEATHER_EFFECTS_LAYER_OPACITY = 0.1;
+export const WEATHER_EFFECTS_LAYER_OPACITY = 0.35;
 
 export type WeatherSpriteConfig = {
   src: string;

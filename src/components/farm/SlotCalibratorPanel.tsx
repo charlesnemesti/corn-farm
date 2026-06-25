@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import {
   isGameMenuTarget,
   isInventoryTarget,
+  isPigRouteTarget,
   isRouteTarget,
   type CalibrationTarget,
 } from "@/hooks/useSlotCalibration";
@@ -15,7 +16,7 @@ import {
   PLOT_COUNT,
   SLOTS_PER_PLOT,
 } from "@/lib/plotBoard";
-import { ROUTE_POINT_COUNT } from "@/lib/routeConfig";
+import { PIG_ROUTE_POINT_COUNT, ROUTE_POINT_COUNT } from "@/lib/routeConfig";
 
 type SlotCalibratorPanelProps = {
   target: CalibrationTarget;
@@ -23,9 +24,11 @@ type SlotCalibratorPanelProps = {
   copied: boolean;
   showCropMarkers: boolean;
   showRouteMarkers: boolean;
+  showPigRouteMarkers: boolean;
   showInventoryMarkers: boolean;
   onToggleCropMarkers: () => void;
   onToggleRouteMarkers: () => void;
+  onTogglePigRouteMarkers: () => void;
   onToggleInventoryMarkers: () => void;
   onTargetChange: (target: CalibrationTarget) => void;
   onStepChange: (step: number) => void;
@@ -48,9 +51,13 @@ function targetLabel(target: CalibrationTarget): string {
     case "slot":
       return `Crop ${target.plotId + 1}-${target.slotId + 1}`;
     case "route":
-      return "Ruta (all waypoints)";
+      return "Farmer route (all waypoints)";
     case "routePoint":
-      return `Ruta point ${target.pointId + 1}`;
+      return `Farmer route point ${target.pointId + 1}`;
+    case "pigRoute":
+      return "Pig route (all waypoints)";
+    case "pigRoutePoint":
+      return `Pig route point ${target.pointId + 1}`;
     case "gameMenu":
       return "Game menu panel";
     case "inventoryAll":
@@ -78,6 +85,10 @@ function selectValue(target: CalibrationTarget): string {
       return "route-all";
     case "routePoint":
       return `route-point-${target.pointId}`;
+    case "pigRoute":
+      return "pig-route-all";
+    case "pigRoutePoint":
+      return `pig-route-point-${target.pointId}`;
     case "gameMenu":
       return "game-menu";
     case "inventoryAll":
@@ -143,9 +154,11 @@ export function SlotCalibratorPanel({
   copied,
   showCropMarkers,
   showRouteMarkers,
+  showPigRouteMarkers,
   showInventoryMarkers,
   onToggleCropMarkers,
   onToggleRouteMarkers,
+  onTogglePigRouteMarkers,
   onToggleInventoryMarkers,
   onTargetChange,
   onStepChange,
@@ -157,6 +170,7 @@ export function SlotCalibratorPanel({
   onClose,
 }: SlotCalibratorPanelProps) {
   const editingRoute = isRouteTarget(target);
+  const editingPigRoute = isPigRouteTarget(target);
   const editingGameMenu = isGameMenuTarget(target);
   const editingInventory = isInventoryTarget(target);
 
@@ -214,9 +228,15 @@ export function SlotCalibratorPanel({
           />
           <MarkerToggle
             active={showRouteMarkers}
-            label="Route points"
+            label="Farmer route"
             activeClassName="bg-cyan-500/30 text-cyan-100"
             onClick={onToggleRouteMarkers}
+          />
+          <MarkerToggle
+            active={showPigRouteMarkers}
+            label="Pig route"
+            activeClassName="bg-pink-500/30 text-pink-100"
+            onClick={onTogglePigRouteMarkers}
           />
           <MarkerToggle
             active={showInventoryMarkers}
@@ -258,12 +278,23 @@ export function SlotCalibratorPanel({
             type="button"
             onClick={() => onTargetChange({ kind: "route" })}
             className={`rounded-lg px-2 py-1.5 text-xs font-medium ${
-              target.kind === "route"
+              editingRoute
                 ? "bg-cyan-500/30 text-cyan-100"
                 : "bg-white/10 hover:bg-white/20"
             }`}
           >
-            Ruta
+            Farmer
+          </button>
+          <button
+            type="button"
+            onClick={() => onTargetChange({ kind: "pigRoute" })}
+            className={`rounded-lg px-2 py-1.5 text-xs font-medium ${
+              editingPigRoute
+                ? "bg-pink-500/30 text-pink-100"
+                : "bg-white/10 hover:bg-white/20"
+            }`}
+          >
+            Pig
           </button>
           <button
             type="button"
@@ -294,6 +325,17 @@ export function SlotCalibratorPanel({
               }
               if (value === "route-all") {
                 onTargetChange({ kind: "route" });
+                return;
+              }
+              if (value === "pig-route-all") {
+                onTargetChange({ kind: "pigRoute" });
+                return;
+              }
+              if (value.startsWith("pig-route-point-")) {
+                onTargetChange({
+                  kind: "pigRoutePoint",
+                  pointId: Number(value.slice(16)),
+                });
                 return;
               }
               if (value.startsWith("route-point-")) {
@@ -385,7 +427,7 @@ export function SlotCalibratorPanel({
               Game menu panel
             </option>
             <option value="route-all" className="bg-neutral-900 text-white">
-              Ruta (all waypoints)
+              Farmer route (all waypoints)
             </option>
             {Array.from({ length: ROUTE_POINT_COUNT }, (_, pointId) => (
               <option
@@ -393,7 +435,19 @@ export function SlotCalibratorPanel({
                 value={`route-point-${pointId}`}
                 className="bg-neutral-900 text-white"
               >
-                Ruta point {pointId + 1}
+                Farmer route point {pointId + 1}
+              </option>
+            ))}
+            <option value="pig-route-all" className="bg-neutral-900 text-white">
+              Pig route (all waypoints)
+            </option>
+            {Array.from({ length: PIG_ROUTE_POINT_COUNT }, (_, pointId) => (
+              <option
+                key={`pig-route-point-${pointId}`}
+                value={`pig-route-point-${pointId}`}
+                className="bg-neutral-900 text-white"
+              >
+                Pig route point {pointId + 1}
               </option>
             ))}
             <option value="inventory-all" className="bg-neutral-900 text-white">
@@ -462,21 +516,31 @@ export function SlotCalibratorPanel({
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-2">
               <span className="text-xs text-white/80">
-                {editingRoute
+                {editingPigRoute
                   ? "Route wider"
-                  : editingInventory
-                    ? "Cols wider"
-                    : "Columns wider"}
+                  : editingRoute
+                    ? "Route wider"
+                    : editingInventory
+                      ? "Cols wider"
+                      : "Columns wider"}
               </span>
               <div className="flex gap-1">
                 <ActionButton
-                  title={editingRoute ? "Tighten route" : "Tighten columns"}
+                  title={
+                    editingPigRoute || editingRoute
+                      ? "Tighten route"
+                      : "Tighten columns"
+                  }
                   onClick={() => onColumnSpacing(-1)}
                 >
                   −
                 </ActionButton>
                 <ActionButton
-                  title={editingRoute ? "Widen route" : "Widen columns"}
+                  title={
+                    editingPigRoute || editingRoute
+                      ? "Widen route"
+                      : "Widen columns"
+                  }
                   onClick={() => onColumnSpacing(1)}
                 >
                   +
@@ -485,12 +549,20 @@ export function SlotCalibratorPanel({
             </div>
             {!editingRoute ? (
               <div className="flex items-center justify-between gap-2">
-                <span className="text-xs text-white/80">Rows taller</span>
+                <span className="text-xs text-white/80">
+                  {editingPigRoute ? "Route taller" : "Rows taller"}
+                </span>
                 <div className="flex gap-1">
-                  <ActionButton title="Tighten rows" onClick={() => onRowSpacing(-1)}>
+                  <ActionButton
+                    title={editingPigRoute ? "Tighten route" : "Tighten rows"}
+                    onClick={() => onRowSpacing(-1)}
+                  >
                     −
                   </ActionButton>
-                  <ActionButton title="Widen rows" onClick={() => onRowSpacing(1)}>
+                  <ActionButton
+                    title={editingPigRoute ? "Widen route" : "Widen rows"}
+                    onClick={() => onRowSpacing(1)}
+                  >
                     +
                   </ActionButton>
                 </div>
@@ -517,10 +589,12 @@ export function SlotCalibratorPanel({
             ? "Copied!"
             : editingGameMenu
               ? "Copy menu"
-              : editingInventory
-                ? "Copy inventory"
-                : editingRoute
-                  ? "Copy route"
+              : editingPigRoute
+              ? "Copy pig route"
+              : editingRoute
+                ? "Copy farmer route"
+                : editingInventory
+                  ? "Copy inventory"
                   : "Copy crops"}
         </button>
       </div>
@@ -528,11 +602,13 @@ export function SlotCalibratorPanel({
       <p className="mt-3 text-[10px] leading-relaxed text-white/45">
         {editingGameMenu
           ? "Select Menu and use arrows. Paste into src/lib/uiConfig.ts."
-          : editingInventory
-            ? "Select Inventory and align violet dots. Paste into src/lib/inventoryBoard.ts."
+          : editingPigRoute
+            ? "Select Pig route, show pink markers, and align the vertical path. Paste into src/lib/routeConfig.ts."
             : editingRoute
-              ? "Paste into src/lib/routeConfig.ts when the cyan path aligns."
-              : "Paste into src/lib/plotBoard.ts when crop dots align."}{" "}
+              ? "Select Farmer route and align cyan markers. Paste into src/lib/routeConfig.ts."
+              : editingInventory
+                ? "Select Inventory and align violet dots. Paste into src/lib/inventoryBoard.ts."
+                : "Paste into src/lib/plotBoard.ts when crop dots align."}{" "}
         Positions are saved in code for all screens.
       </p>
     </aside>

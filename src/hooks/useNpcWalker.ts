@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { FARMER_SPRITE, type NpcDirection } from "@/lib/npcSprites";
+import { FARMER_SPRITE, type NpcDirection, type NpcWalkAnimation } from "@/lib/npcSprites";
 import type { RoutePoint } from "@/lib/routeConfig";
 
 export type NpcWalkerState = {
@@ -35,6 +35,7 @@ function cloneRoute(points: RoutePoint[]): RoutePoint[] {
 export function useNpcWalker(
   route: RoutePoint[],
   paused = false,
+  animation: NpcWalkAnimation = FARMER_SPRITE,
 ): NpcWalkerState {
   const routeRef = useRef(route);
   routeRef.current = route;
@@ -94,9 +95,9 @@ export function useNpcWalker(
       const direction = directionBetween(currentFrom, currentTo);
 
       progress.frameAccumulator += dt * 1000;
-      if (progress.frameAccumulator >= FARMER_SPRITE.frameDurationMs) {
+      if (progress.frameAccumulator >= animation.frameDurationMs) {
         progress.frameAccumulator = 0;
-        progress.frame = (progress.frame + 1) % FARMER_SPRITE.framesPerDirection;
+        progress.frame = (progress.frame + 1) % animation.framesPerDirection;
       }
 
       setState({
@@ -112,7 +113,7 @@ export function useNpcWalker(
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [paused, route.length]);
+  }, [animation.frameDurationMs, animation.framesPerDirection, paused, route.length]);
 
   return state;
 }

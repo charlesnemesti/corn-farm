@@ -15,6 +15,7 @@ import { InventoryDebugOverlay } from "@/components/game/InventoryDebugOverlay";
 import { InventoryMenuShell } from "@/components/game/InventoryMenuShell";
 import { DebugOverlay } from "./DebugOverlay";
 import { FarmerNpc } from "./FarmerNpc";
+import { PigNpc } from "./PigNpc";
 import { PlotBoard } from "./PlotBoard";
 import { PlotRowUnlockLayer } from "./PlotRowUnlockLayer";
 import { NpcDialog } from "./NpcDialog";
@@ -40,6 +41,7 @@ function FarmSceneContent() {
   const { calibratorOpen, closeCalibrator } = useDebugUi();
   const [showCropMarkers, setShowCropMarkers] = useState(false);
   const [showRouteMarkers, setShowRouteMarkers] = useState(false);
+  const [showPigRouteMarkers, setShowPigRouteMarkers] = useState(false);
   const [showInventoryMarkers, setShowInventoryMarkers] = useState(false);
   const [farmerDialogOpen, setFarmerDialogOpen] = useState(false);
   const [villagerDialogOpen, setVillagerDialogOpen] = useState(false);
@@ -91,6 +93,8 @@ function FarmSceneContent() {
             onClick={() => setFarmerDialogOpen(true)}
           />
 
+          <PigNpc route={calibration.pigRoutePoints} transform={transform} />
+
           <SeedShopSign transform={transform} />
 
           <VillagerNpc
@@ -129,12 +133,15 @@ function FarmSceneContent() {
                 transform={transform}
                 slots={calibration.slots}
                 routePoints={calibration.routePoints}
+                pigRoutePoints={calibration.pigRoutePoints}
                 target={calibration.target}
                 showCropMarkers={showCropMarkers}
                 showRouteMarkers={showRouteMarkers}
+                showPigRouteMarkers={showPigRouteMarkers}
                 onSelect={calibration.setTarget}
                 onMoveSlot={calibration.setSlotPosition}
                 onMoveRoutePoint={calibration.setRoutePointPosition}
+                onMovePigRoutePoint={calibration.setPigRoutePointPosition}
               />
 
               <InventoryDebugOverlay
@@ -153,9 +160,13 @@ function FarmSceneContent() {
                   copied={calibration.copied}
                   showCropMarkers={showCropMarkers}
                   showRouteMarkers={showRouteMarkers}
+                  showPigRouteMarkers={showPigRouteMarkers}
                   showInventoryMarkers={showInventoryMarkers}
                   onToggleCropMarkers={() => setShowCropMarkers((prev) => !prev)}
                   onToggleRouteMarkers={() => setShowRouteMarkers((prev) => !prev)}
+                  onTogglePigRouteMarkers={() =>
+                    setShowPigRouteMarkers((prev) => !prev)
+                  }
                   onToggleInventoryMarkers={() =>
                     setShowInventoryMarkers((prev) => !prev)
                   }

@@ -7,7 +7,7 @@ import {
   SLOTS_PER_PLOT,
   type PlotSlotConfig,
 } from "@/lib/plotBoard";
-import { ROUTE_POINTS, type RoutePoint } from "@/lib/routeConfig";
+import { PIG_ROUTE_POINTS, ROUTE_POINTS, type RoutePoint } from "@/lib/routeConfig";
 import {
   INVENTORY_COLS,
   INVENTORY_ROWS,
@@ -19,6 +19,7 @@ import { useCoverTransform } from "@/hooks/useCoverTransform";
 
 const SLOT_STORAGE_KEY = "solfarm-slot-calibration-v2";
 const ROUTE_STORAGE_KEY = "solfarm-route-calibration";
+const PIG_ROUTE_STORAGE_KEY = "solfarm-pig-route-calibration";
 
 export type CalibrationTarget =
   | { kind: "all" }
@@ -27,6 +28,8 @@ export type CalibrationTarget =
   | { kind: "slot"; plotId: number; slotId: number }
   | { kind: "route" }
   | { kind: "routePoint"; pointId: number }
+  | { kind: "pigRoute" }
+  | { kind: "pigRoutePoint"; pointId: number }
   | { kind: "gameMenu" }
   | { kind: "inventoryAll" }
   | { kind: "invRow"; row: number }
@@ -35,6 +38,10 @@ export type CalibrationTarget =
 
 export function isRouteTarget(target: CalibrationTarget): boolean {
   return target.kind === "route" || target.kind === "routePoint";
+}
+
+export function isPigRouteTarget(target: CalibrationTarget): boolean {
+  return target.kind === "pigRoute" || target.kind === "pigRoutePoint";
 }
 
 export function isGameMenuTarget(target: CalibrationTarget): boolean {
@@ -129,6 +136,23 @@ function loadSavedRoute(): RoutePoint[] | null {
   }
 }
 
+function loadSavedPigRoute(): RoutePoint[] | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(PIG_ROUTE_STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as unknown;
+    if (!isValidRoutePoints(data)) {
+      localStorage.removeItem(PIG_ROUTE_STORAGE_KEY);
+      return null;
+    }
+    return data;
+  } catch {
+    localStorage.removeItem(PIG_ROUTE_STORAGE_KEY);
+    return null;
+  }
+}
+
 function isValidRoutePoints(data: unknown): data is RoutePoint[] {
   if (!Array.isArray(data) || data.length < 2) return false;
   return data.every(
@@ -192,6 +216,17 @@ function matchesRouteTarget(pointId: number, target: CalibrationTarget): boolean
   }
 }
 
+function matchesPigRouteTarget(pointId: number, target: CalibrationTarget): boolean {
+  switch (target.kind) {
+    case "pigRoute":
+      return true;
+    case "pigRoutePoint":
+      return pointId === target.pointId;
+    default:
+      return false;
+  }
+}
+
 export function serializePlotSlots(slots: PlotSlotConfig[]): string {
   const rowYs = slots.map((plot) => Math.round(plot.slots[0]?.y ?? 0));
   const colXs = slots[0]?.slots.map((slot) => Math.round(slot.x)) ?? [];
@@ -234,6 +269,17 @@ export function serializeRoutePoints(points: RoutePoint[]): string {
   return `export const ROUTE_POINTS: RoutePoint[] = [\n${lines}\n];`;
 }
 
+export function serializePigRoutePoints(points: RoutePoint[]): string {
+  const lines = points
+    .map(
+      (point) =>
+        `  { id: ${point.id}, x: ${Math.round(point.x)}, y: ${Math.round(point.y)} },`,
+    )
+    .join("\n");
+
+  return `export const PIG_ROUTE_POINTS: RoutePoint[] = [\n${lines}\n];`;
+}
+
 export function serializeGameMenuPosition(position: ScreenPosition): string {
   return `export const GAME_MENU_DESIGN_ANCHOR = { x: ${Math.round(position.x)}, y: ${Math.round(position.y)} };`;
 }
@@ -255,6 +301,9 @@ export function useSlotCalibration() {
   const [routePoints, setRoutePoints] = useState<RoutePoint[]>(() =>
     cloneRoute(ROUTE_POINTS),
   );
+  const [pigRoutePoints, setPigRoutePoints] = useState<RoutePoint[]>(() =>
+    cloneRoute(PIG_ROUTE_POINTS),
+  );
   const [gameMenuDesignAnchor, setGameMenuDesignAnchor] = useState<ScreenPosition>(
     () => ({
       ...GAME_MENU_DESIGN_ANCHOR,
@@ -274,6 +323,9 @@ export function useSlotCalibration() {
 
     const savedRoute = loadSavedRoute();
     if (savedRoute) setRoutePoints(savedRoute);
+
+    const savedPigRoute = loadSavedPigRoute();
+    if (savedPigRoute) setPigRoutePoints(savedPigRoute);
 
     setHydrated(true);
   }, []);
@@ -314,6 +366,23 @@ export function useSlotCalibration() {
     [target],
   );
 
+  const applyPigRouteDelta = useCallback(
+    (dx: number, dy: number) => {
+      setPigRoutePoints((prev) => {
+        const next = cloneRoute(prev);
+        for (const point of next) {
+          if (matchesPigRouteTarget(point.id, target)) {
+            point.x += dx;
+            point.y += dy;
+          }
+        }
+        localStorage.setItem(PIG_ROUTE_STORAGE_KEY, JSON.stringify(next));
+        return next;
+      });
+    },
+    [target],
+  );
+
   const applyInventoryDelta = useCallback(
     (dx: number, dy: number) => {
       setInventorySlots((prev) => {
@@ -347,13 +416,25 @@ export function useSlotCalibration() {
         applyInventoryDelta(deltaX, deltaY);
         return;
       }
+      if (isPigRouteTarget(target)) {
+        applyPigRouteDelta(deltaX, deltaY);
+        return;
+      }
       if (isRouteTarget(target)) {
         applyRouteDelta(deltaX, deltaY);
       } else {
         applyCropDelta(deltaX, deltaY);
       }
     },
-    [applyCropDelta, applyInventoryDelta, applyRouteDelta, coverTransform.scale, step, target],
+    [
+      applyCropDelta,
+      applyInventoryDelta,
+      applyPigRouteDelta,
+      applyRouteDelta,
+      coverTransform.scale,
+      step,
+      target,
+    ],
   );
 
   const adjustColumnSpacing = useCallback(
@@ -370,6 +451,20 @@ export function useSlotCalibration() {
             if (target.kind === "invSlot") continue;
             slot.x += (slot.col - center) * delta * step;
           }
+          return next;
+        });
+        return;
+      }
+
+      if (isPigRouteTarget(target)) {
+        setPigRoutePoints((prev) => {
+          const next = cloneRoute(prev);
+          const center = (next.length - 1) / 2;
+          for (const point of next) {
+            if (!matchesPigRouteTarget(point.id, target)) continue;
+            point.x += (point.id - center) * delta * step;
+          }
+          localStorage.setItem(PIG_ROUTE_STORAGE_KEY, JSON.stringify(next));
           return next;
         });
         return;
@@ -411,6 +506,20 @@ export function useSlotCalibration() {
   const adjustRowSpacing = useCallback(
     (delta: number) => {
       if (isRouteTarget(target) || isGameMenuTarget(target)) return;
+
+      if (isPigRouteTarget(target)) {
+        setPigRoutePoints((prev) => {
+          const next = cloneRoute(prev);
+          const center = (next.length - 1) / 2;
+          for (const point of next) {
+            if (!matchesPigRouteTarget(point.id, target)) continue;
+            point.y += (point.id - center) * delta * step;
+          }
+          localStorage.setItem(PIG_ROUTE_STORAGE_KEY, JSON.stringify(next));
+          return next;
+        });
+        return;
+      }
 
       if (isInventoryTarget(target)) {
         setInventorySlots((prev) => {
@@ -490,6 +599,22 @@ export function useSlotCalibration() {
     [],
   );
 
+  const setPigRoutePointPosition = useCallback(
+    (pointId: number, x: number, y: number) => {
+      if (!Number.isFinite(x) || !Number.isFinite(y)) return;
+      setPigRoutePoints((prev) => {
+        const next = cloneRoute(prev);
+        const point = next.find((entry) => entry.id === pointId);
+        if (!point) return prev;
+        point.x = x;
+        point.y = y;
+        localStorage.setItem(PIG_ROUTE_STORAGE_KEY, JSON.stringify(next));
+        return next;
+      });
+    },
+    [],
+  );
+
   const setInventorySlotPosition = useCallback(
     (row: number, col: number, x: number, y: number) => {
       if (!Number.isFinite(x) || !Number.isFinite(y)) return;
@@ -517,6 +642,14 @@ export function useSlotCalibration() {
       return;
     }
 
+    if (isPigRouteTarget(target)) {
+      const fresh = cloneRoute(PIG_ROUTE_POINTS);
+      setPigRoutePoints(fresh);
+      localStorage.setItem(PIG_ROUTE_STORAGE_KEY, JSON.stringify(fresh));
+      setTarget({ kind: "pigRoute" });
+      return;
+    }
+
     if (isRouteTarget(target)) {
       const fresh = cloneRoute(ROUTE_POINTS);
       setRoutePoints(fresh);
@@ -537,17 +670,20 @@ export function useSlotCalibration() {
         ? serializeGameMenuPosition(gameMenuDesignAnchor)
         : isInventoryTarget(target)
           ? serializeInventorySlots(inventorySlots)
+          : isPigRouteTarget(target)
+          ? serializePigRoutePoints(pigRoutePoints)
           : isRouteTarget(target)
             ? serializeRoutePoints(routePoints)
             : serializePlotSlots(slots);
     await navigator.clipboard.writeText(text);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 2000);
-  }, [gameMenuDesignAnchor, inventorySlots, routePoints, slots, target]);
+  }, [gameMenuDesignAnchor, inventorySlots, pigRoutePoints, routePoints, slots, target]);
 
   return {
     slots,
     routePoints,
+    pigRoutePoints,
     gameMenuDesignAnchor,
     inventorySlots,
     setInventorySlotPosition,
@@ -562,6 +698,7 @@ export function useSlotCalibration() {
     adjustRowSpacing,
     setSlotPosition,
     setRoutePointPosition,
+    setPigRoutePointPosition,
     reset,
     copyConfig,
   };

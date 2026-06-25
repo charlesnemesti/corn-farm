@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { WeatherWheel } from "@/components/layout/WeatherWheel";
-import { WeatherCountdown } from "@/components/layout/WeatherCountdown";
+import { WeatherStatusPanel } from "@/components/layout/WeatherStatusPanel";
 import {
   dismissWeatherInfo,
   isWeatherInfoDismissed,
@@ -26,10 +26,7 @@ export function WeatherHelpSection() {
   return (
     <div className="flex flex-col items-center gap-1.5">
       <div className="flex items-start gap-1.5">
-        <div className="flex flex-col items-center gap-0.5">
-          <WeatherWheel />
-          <WeatherCountdown />
-        </div>
+        <WeatherWheel />
         {ready && !expanded ? (
           <button
             type="button"
@@ -44,6 +41,8 @@ export function WeatherHelpSection() {
           <div className="h-7 w-7 shrink-0" aria-hidden />
         )}
       </div>
+
+      <WeatherStatusPanel />
 
       {ready && expanded ? (
         <div className="weather-info-tooltip pointer-events-auto w-[min(calc(100vw-1.5rem),15rem)] rounded-lg border border-[#4a3428]/25 bg-[#f5e6c8]/95 px-3 py-2.5 text-left text-[#4a3428] shadow-lg">

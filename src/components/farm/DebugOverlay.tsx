@@ -2,7 +2,7 @@
 
 import { useRef } from "react";
 import type { CalibrationTarget } from "@/hooks/useSlotCalibration";
-import { isRouteTarget } from "@/hooks/useSlotCalibration";
+import { isPigRouteTarget, isRouteTarget } from "@/hooks/useSlotCalibration";
 import type { CoverTransform } from "@/hooks/useCoverTransform";
 import { designToScreen, screenToDesign } from "@/hooks/useCoverTransform";
 import type { PlotSlotConfig } from "@/lib/plotBoard";
@@ -12,12 +12,15 @@ type DebugOverlayProps = {
   transform: CoverTransform;
   slots: PlotSlotConfig[];
   routePoints: RoutePoint[];
+  pigRoutePoints: RoutePoint[];
   target: CalibrationTarget;
   showCropMarkers?: boolean;
   showRouteMarkers?: boolean;
+  showPigRouteMarkers?: boolean;
   onSelect: (target: CalibrationTarget) => void;
   onMoveSlot: (plotId: number, slotId: number, x: number, y: number) => void;
   onMoveRoutePoint: (pointId: number, x: number, y: number) => void;
+  onMovePigRoutePoint: (pointId: number, x: number, y: number) => void;
 };
 
 function isCropSelected(
@@ -25,7 +28,7 @@ function isCropSelected(
   slotId: number,
   target: CalibrationTarget,
 ): boolean {
-  if (isRouteTarget(target)) return false;
+  if (isRouteTarget(target) || isPigRouteTarget(target)) return false;
   switch (target.kind) {
     case "all":
       return false;
@@ -40,7 +43,7 @@ function isCropSelected(
   }
 }
 
-function isRouteSelected(pointId: number, target: CalibrationTarget): boolean {
+function isFarmerRouteSelected(pointId: number, target: CalibrationTarget): boolean {
   switch (target.kind) {
     case "route":
       return true;
@@ -51,17 +54,31 @@ function isRouteSelected(pointId: number, target: CalibrationTarget): boolean {
   }
 }
 
-// Crop markers 2×2 px (red); route markers larger (cyan).
+function isPigRouteSelected(pointId: number, target: CalibrationTarget): boolean {
+  switch (target.kind) {
+    case "pigRoute":
+      return true;
+    case "pigRoutePoint":
+      return pointId === target.pointId;
+    default:
+      return false;
+  }
+}
+
+// Crop markers 2×2 px (red); farmer route cyan; pig route pink.
 export function DebugOverlay({
   transform,
   slots,
   routePoints,
+  pigRoutePoints,
   target,
   showCropMarkers = false,
   showRouteMarkers = false,
+  showPigRouteMarkers = false,
   onSelect,
   onMoveSlot,
   onMoveRoutePoint,
+  onMovePigRoutePoint,
 }: DebugOverlayProps) {
   const cropDragRef = useRef<{
     plotId: number;
@@ -70,6 +87,11 @@ export function DebugOverlay({
   } | null>(null);
 
   const routeDragRef = useRef<{
+    pointId: number;
+    pointerId: number;
+  } | null>(null);
+
+  const pigRouteDragRef = useRef<{
     pointId: number;
     pointerId: number;
   } | null>(null);
@@ -116,75 +138,124 @@ export function DebugOverlay({
     onMoveRoutePoint(pointId, design.x, design.y);
   };
 
+  const handlePigRoutePointerDown = (
+    event: React.PointerEvent<HTMLButtonElement>,
+    pointId: number,
+  ) => {
+    event.preventDefault();
+    pigRouteDragRef.current = { pointId, pointerId: event.pointerId };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    onSelect({ kind: "pigRoutePoint", pointId });
+  };
+
+  const handlePigRoutePointerMove = (
+    event: React.PointerEvent<HTMLButtonElement>,
+    pointId: number,
+  ) => {
+    const drag = pigRouteDragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const design = screenToDesign(event.clientX, event.clientY, transform);
+    onMovePigRoutePoint(pointId, design.x, design.y);
+  };
+
   const releasePointer = (event: React.PointerEvent<HTMLButtonElement>) => {
     cropDragRef.current = null;
     routeDragRef.current = null;
+    pigRouteDragRef.current = null;
     event.currentTarget.releasePointerCapture(event.pointerId);
   };
 
-  if (!showCropMarkers && !showRouteMarkers) return null;
+  if (!showCropMarkers && !showRouteMarkers && !showPigRouteMarkers) return null;
 
   return (
     <div className="pointer-events-none absolute inset-0 z-[100]">
       {showRouteMarkers
         ? routePoints.map((point) => {
-        const screen = designToScreen(point.x, point.y, transform);
-        const selected = isRouteSelected(point.id, target);
+            const screen = designToScreen(point.x, point.y, transform);
+            const selected = isFarmerRouteSelected(point.id, target);
 
-        return (
-          <button
-            key={`route-${point.id}`}
-            type="button"
-            aria-label={`Route point ${point.id + 1}`}
-            className="pointer-events-auto absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center"
-            style={{ left: screen.x, top: screen.y }}
-            onPointerDown={(event) => handleRoutePointerDown(event, point.id)}
-            onPointerMove={(event) => handleRoutePointerMove(event, point.id)}
-            onPointerUp={releasePointer}
-            onPointerCancel={releasePointer}
-          >
-            <span
-              className={`rounded-full ring-2 ring-white/90 ${
-                selected ? "bg-yellow-400" : "bg-cyan-400"
-              }`}
-              style={{ width: 10, height: 10 }}
-            />
-          </button>
-        );
-      })
+            return (
+              <button
+                key={`route-${point.id}`}
+                type="button"
+                aria-label={`Farmer route point ${point.id + 1}`}
+                className="pointer-events-auto absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center"
+                style={{ left: screen.x, top: screen.y }}
+                onPointerDown={(event) => handleRoutePointerDown(event, point.id)}
+                onPointerMove={(event) => handleRoutePointerMove(event, point.id)}
+                onPointerUp={releasePointer}
+                onPointerCancel={releasePointer}
+              >
+                <span
+                  className={`rounded-full ring-2 ring-white/90 ${
+                    selected ? "bg-yellow-400" : "bg-cyan-400"
+                  }`}
+                  style={{ width: 10, height: 10 }}
+                />
+              </button>
+            );
+          })
+        : null}
+
+      {showPigRouteMarkers
+        ? pigRoutePoints.map((point) => {
+            const screen = designToScreen(point.x, point.y, transform);
+            const selected = isPigRouteSelected(point.id, target);
+
+            return (
+              <button
+                key={`pig-route-${point.id}`}
+                type="button"
+                aria-label={`Pig route point ${point.id + 1}`}
+                className="pointer-events-auto absolute flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center"
+                style={{ left: screen.x, top: screen.y }}
+                onPointerDown={(event) => handlePigRoutePointerDown(event, point.id)}
+                onPointerMove={(event) => handlePigRoutePointerMove(event, point.id)}
+                onPointerUp={releasePointer}
+                onPointerCancel={releasePointer}
+              >
+                <span
+                  className={`rounded-full ring-2 ring-white/90 ${
+                    selected ? "bg-yellow-400" : "bg-pink-400"
+                  }`}
+                  style={{ width: 10, height: 10 }}
+                />
+              </button>
+            );
+          })
         : null}
 
       {showCropMarkers
         ? slots.flatMap((plot) =>
-        plot.slots.map((slot, slotIndex) => {
-          const screen = designToScreen(slot.x, slot.y, transform);
-          const selected = isCropSelected(plot.plotId, slotIndex, target);
+            plot.slots.map((slot, slotIndex) => {
+              const screen = designToScreen(slot.x, slot.y, transform);
+              const selected = isCropSelected(plot.plotId, slotIndex, target);
 
-          return (
-            <button
-              key={`${plot.plotId}-${slotIndex}`}
-              type="button"
-              aria-label={`Slot ${plot.plotId + 1}-${slotIndex + 1}`}
-              className="pointer-events-auto absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center"
-              style={{ left: screen.x, top: screen.y }}
-              onPointerDown={(event) =>
-                handleCropPointerDown(event, plot.plotId, slotIndex)
-              }
-              onPointerMove={(event) =>
-                handleCropPointerMove(event, plot.plotId, slotIndex)
-              }
-              onPointerUp={releasePointer}
-              onPointerCancel={releasePointer}
-            >
-              <span
-                className={`rounded-full ring-2 ring-white/90 ${
-                  selected ? "bg-yellow-400" : "bg-red-500"
-                }`}
-                style={{ width: 8, height: 8 }}
-              />
-            </button>
-          );
-        }),
+              return (
+                <button
+                  key={`${plot.plotId}-${slotIndex}`}
+                  type="button"
+                  aria-label={`Slot ${plot.plotId + 1}-${slotIndex + 1}`}
+                  className="pointer-events-auto absolute flex h-5 w-5 -translate-x-1/2 -translate-y-1/2 touch-none items-center justify-center"
+                  style={{ left: screen.x, top: screen.y }}
+                  onPointerDown={(event) =>
+                    handleCropPointerDown(event, plot.plotId, slotIndex)
+                  }
+                  onPointerMove={(event) =>
+                    handleCropPointerMove(event, plot.plotId, slotIndex)
+                  }
+                  onPointerUp={releasePointer}
+                  onPointerCancel={releasePointer}
+                >
+                  <span
+                    className={`rounded-full ring-2 ring-white/90 ${
+                      selected ? "bg-yellow-400" : "bg-red-500"
+                    }`}
+                    style={{ width: 8, height: 8 }}
+                  />
+                </button>
+              );
+            }),
           )
         : null}
     </div>
