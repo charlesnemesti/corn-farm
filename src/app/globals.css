@@ -183,6 +183,7 @@ body {
 
 /* HUD action buttons (wallet connect, treasury) inside parchment panels */
 .hud-panel .hud-action-button,
+.hud-panel a.hud-action-button,
 .hud-panel .wallet-adapter-button,
 .hud-panel .wallet-adapter-button-trigger,
 .hud-panel .hud-wallet-button {
@@ -196,17 +197,19 @@ body {
   background: transparent !important;
   background-color: transparent !important;
   box-shadow: none !important;
-  color: #fff !important;
+  color: #000 !important;
   font-family: inherit !important;
   font-size: 0.75rem !important;
   font-weight: 700 !important;
   line-height: 1.25 !important;
   cursor: pointer;
   transition: background-color 0.15s ease;
+  text-decoration: none !important;
 }
 
 @media (min-width: 640px) {
   .hud-panel .hud-action-button,
+  .hud-panel a.hud-action-button,
   .hud-panel .wallet-adapter-button,
   .hud-panel .wallet-adapter-button-trigger,
   .hud-panel .hud-wallet-button {
@@ -218,6 +221,7 @@ body {
 }
 
 .hud-panel .hud-action-button:hover:not(:disabled),
+.hud-panel a.hud-action-button:hover,
 .hud-panel .wallet-adapter-button:not([disabled]):hover,
 .hud-panel .wallet-adapter-button-trigger:not([disabled]):hover {
   background-color: rgba(74, 52, 40, 0.1) !important;
@@ -251,5 +255,10 @@ body {
 
 .hud-panel .wallet-adapter-button-end-icon {
   margin-left: 6px !important;
+}
+
+.hud-panel .wallet-adapter-button span,
+.hud-panel .hud-wallet-button span {
+  color: #000 !important;
 }
 

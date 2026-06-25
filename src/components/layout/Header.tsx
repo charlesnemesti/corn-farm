@@ -15,6 +15,9 @@ const WalletMultiButton = dynamic(
   { ssr: false },
 );
 
+const WALLET_PANEL_WIDTH = 340;
+const COMPACT_PANEL_WIDTH = WALLET_PANEL_WIDTH * 0.5;
+
 export function Header() {
   return (
     <header className="pointer-events-none fixed inset-x-0 top-0 z-50">
@@ -34,25 +37,31 @@ export function Header() {
 
       <div
         className="pointer-events-auto absolute top-2 left-2 flex flex-col items-start gap-1 sm:top-3 sm:left-3"
-        style={{ width: 340 }}
+        style={{ width: WALLET_PANEL_WIDTH }}
       >
-        <HudPanel width={340}>
+        <HudPanel width={WALLET_PANEL_WIDTH}>
           <WalletMultiButton className="hud-wallet-button" />
           <TreasuryControls />
         </HudPanel>
         <HudPanel
-          width={340}
+          width={COMPACT_PANEL_WIDTH}
           displayHeight={HUD_PANEL.musicControlHeight}
           compact
         >
           <MusicControl />
         </HudPanel>
-        <Link
-          href="/tokenomics"
-          className="pointer-events-auto rounded-lg border border-white/15 bg-black/70 px-2 py-1 text-[10px] font-semibold text-farm-sun transition hover:bg-black/85"
+        <HudPanel
+          width={COMPACT_PANEL_WIDTH}
+          displayHeight={HUD_PANEL.musicControlHeight}
+          compact
         >
-          Tokenomics
-        </Link>
+          <Link
+            href="/tokenomics"
+            className="hud-action-button w-full !justify-center !px-0"
+          >
+            Tokenomics
+          </Link>
+        </HudPanel>
       </div>
 
       <div className="pointer-events-auto absolute top-2 right-2 sm:top-3 sm:right-3">

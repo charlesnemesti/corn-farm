@@ -11,12 +11,12 @@ export const ROUTE_POINT_COUNT = 8;
 
 /** Farmer patrol waypoints along the dirt path around the fenced farm. */
 export const ROUTE_POINTS: RoutePoint[] = [
-  { id: 0, x: 248, y: 448 },
-  { id: 1, x: 368, y: 448 },
-  { id: 2, x: 488, y: 448 },
-  { id: 3, x: 608, y: 448 },
-  { id: 4, x: 728, y: 448 },
-  { id: 5, x: 848, y: 430 },
-  { id: 6, x: 848, y: 330 },
-  { id: 7, x: 728, y: 280 },
+  { id: 0, x: 797, y: 456 },
+  { id: 1, x: 725, y: 483 },
+  { id: 2, x: 624, y: 490 },
+  { id: 3, x: 535, y: 476 },
+  { id: 4, x: 450, y: 467 },
+  { id: 5, x: 364, y: 469 },
+  { id: 6, x: 277, y: 468 },
+  { id: 7, x: 225, y: 467 },
 ];
