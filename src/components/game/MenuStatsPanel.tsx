@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useGame } from "@/context/GameProvider";
 import { usePlayMode } from "@/context/PlayModeProvider";
+import { useWeather } from "@/context/WeatherProvider";
 import { LeaderboardPanel } from "@/components/game/LeaderboardPanel";
 import {
   calculateCornPerHour,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/cropState";
 import { formatXpProgress, getXpProgress } from "@/lib/levelConfig";
 import { menuToScreen, type GameMenuLayout } from "@/lib/menuCoordinates";
+import { getWeatherProductionLabel } from "@/lib/weatherEffects";
 import { STATS_TEXT_ANCHOR } from "@/lib/uiConfig";
 
 type MenuStatsPanelProps = {
@@ -20,6 +22,7 @@ type MenuStatsPanelProps = {
 export function MenuStatsPanel({ menuLayout }: MenuStatsPanelProps) {
   const { plantedCrops, xp, hydrated } = useGame();
   const { playMode } = usePlayMode();
+  const { weather } = useWeather();
   const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const { position: menuPosition, scale } = menuLayout;
   const anchor = menuToScreen(
@@ -30,11 +33,14 @@ export function MenuStatsPanel({ menuLayout }: MenuStatsPanelProps) {
   );
   const fontSize = Math.max(12, 36 * scale);
   const lineGap = STATS_TEXT_ANCHOR.lineGap * scale;
-  const cornPerHour = calculateCornPerHour(plantedCrops);
+  const cornPerHour = calculateCornPerHour(plantedCrops, weather);
   const xpProgress = getXpProgress(xp);
+  const weatherLabel = getWeatherProductionLabel(weather);
 
   const productionLabel = hydrated
-    ? `Production: ${formatCornPerHour(cornPerHour)}`
+    ? weatherLabel
+      ? `Production: ${formatCornPerHour(cornPerHour)} (${weatherLabel})`
+      : `Production: ${formatCornPerHour(cornPerHour)}`
     : "Production: — $CORN/h";
   const levelLabel = hydrated ? `lv : ${xpProgress.level}` : "lv : —";
   const xpLabel = hydrated ? formatXpProgress(xpProgress) : "— / — XP";

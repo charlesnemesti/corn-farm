@@ -1,8 +1,11 @@
+"use client";
+
 import type { PlantedCrop } from "@/lib/cropState";
 import {
   formatRemainingTime,
   getCycleProgress,
 } from "@/lib/cropState";
+import { useWeather } from "@/context/WeatherProvider";
 
 type CropTimerProps = {
   crop: PlantedCrop;
@@ -11,7 +14,8 @@ type CropTimerProps = {
 };
 
 export function CropTimer({ crop, now, scale }: CropTimerProps) {
-  const { remainingMs, progress } = getCycleProgress(crop, now);
+  const { weather } = useWeather();
+  const { remainingMs, progress } = getCycleProgress(crop, now, weather);
   const barWidth = Math.max(23, 30 * scale);
 
   return (

@@ -16,6 +16,9 @@ import { TutorialProvider } from "@/context/TutorialProvider";
 import { BackgroundMusicProvider } from "@/context/BackgroundMusicProvider";
 import { PlayModeProvider } from "@/context/PlayModeProvider";
 import { SolanaWalletProvider } from "@/components/providers/SolanaWalletProvider";
+import { WeatherEffectsLayer } from "@/components/farm/WeatherEffectsLayer";
+import { WeatherUprootToast } from "@/components/layout/WeatherUprootToast";
+import { WeatherProvider } from "@/context/WeatherProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -47,22 +50,26 @@ export default function RootLayout({
         <SolanaWalletProvider>
           <PlayModeProvider>
             <BackgroundMusicProvider>
-              <GameProvider>
-                <DebugUiProvider>
-                  <TutorialProvider>
-                    <InventoryMenuProvider>
-                      <DragProvider>
-                        <Header />
-                        <DebugBottomBar />
-                        {children}
-                        <TutorialOverlay />
-                        <ModeSelectOverlay />
-                        <DemoConnectBanner />
-                      </DragProvider>
-                    </InventoryMenuProvider>
-                  </TutorialProvider>
-                </DebugUiProvider>
-              </GameProvider>
+              <WeatherProvider>
+                <GameProvider>
+                  <DebugUiProvider>
+                    <TutorialProvider>
+                      <InventoryMenuProvider>
+                        <DragProvider>
+                          <Header />
+                          <WeatherEffectsLayer />
+                          <WeatherUprootToast />
+                          <DebugBottomBar />
+                          {children}
+                          <TutorialOverlay />
+                          <ModeSelectOverlay />
+                          <DemoConnectBanner />
+                        </DragProvider>
+                      </InventoryMenuProvider>
+                    </TutorialProvider>
+                  </DebugUiProvider>
+                </GameProvider>
+              </WeatherProvider>
             </BackgroundMusicProvider>
           </PlayModeProvider>
         </SolanaWalletProvider>

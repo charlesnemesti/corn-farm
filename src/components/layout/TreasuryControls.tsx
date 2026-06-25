@@ -16,7 +16,7 @@ export function TreasuryControls() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="hud-action-button"
+        className="hud-action-button shrink-0"
         title={
           walletMode
             ? walletConnected

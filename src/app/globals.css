@@ -62,6 +62,12 @@ body {
   min-height: 100vh;
 }
 
+.rain-layer,
+.weather-layer {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 .pixel-art {
   image-rendering: pixelated;
   image-rendering: crisp-edges;
@@ -260,6 +266,18 @@ body {
   object-fit: cover;
 }
 
+.hud-panel .hud-action-button__icon-btn {
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.hud-panel .hud-action-button--connected {
+  white-space: nowrap;
+}
+
 .hud-panel .wallet-adapter-button-end-icon {
   margin-left: 6px !important;
 }
@@ -267,5 +285,14 @@ body {
 .hud-panel .wallet-adapter-button span,
 .hud-panel .hud-wallet-button span {
   color: #000 !important;
+}
+
+/* Keep wallet picker above game overlays (mode gate, tutorial, modals). */
+.wallet-adapter-modal {
+  z-index: 10000 !important;
+}
+
+.wallet-adapter-modal-wrapper {
+  z-index: 10001 !important;
 }
 

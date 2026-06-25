@@ -1,17 +1,12 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { usePlayMode } from "@/context/PlayModeProvider";
-
-const WalletMultiButton = dynamic(
-  async () =>
-    (await import("@solana/wallet-adapter-react-ui")).WalletMultiButton,
-  { ssr: false },
-);
+import { useWalletConnectAction } from "@/hooks/useWalletConnectAction";
 
 // Full-screen blur gate — pick Demo or connect wallet for Normal mode.
 export function ModeSelectOverlay() {
   const { gateActive, playMode, selectPlayMode } = usePlayMode();
+  const { connectWallet, connecting } = useWalletConnectAction();
 
   if (!gateActive) return null;
 
@@ -40,7 +35,14 @@ export function ModeSelectOverlay() {
 
         {awaitingWallet ? (
           <div className="mt-6 flex flex-col items-center gap-3">
-            <WalletMultiButton className="!rounded-lg !bg-farm-sun !px-4 !py-2 !text-sm !font-semibold !text-farm-wood hover:!bg-farm-sun-dark" />
+            <button
+              type="button"
+              onClick={connectWallet}
+              disabled={connecting}
+              className="rounded-lg bg-farm-sun px-4 py-2 text-sm font-semibold text-farm-wood transition hover:bg-farm-sun-dark disabled:opacity-60"
+            >
+              {connecting ? "Connecting…" : "Connect wallet"}
+            </button>
             <button
               type="button"
               onClick={() => selectPlayMode("demo")}

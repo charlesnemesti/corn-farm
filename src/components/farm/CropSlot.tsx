@@ -7,6 +7,11 @@ import { rarityTintForSeed } from "@/lib/plantSprites";
 import type { CropKind } from "@/lib/plantSprites";
 import { SEED_STATS } from "@/lib/seedConfig";
 import { useTutorial } from "@/context/TutorialProvider";
+import { useWeather } from "@/context/WeatherProvider";
+import {
+  getEffectiveCycleMs,
+  getWeatherCornMultiplier,
+} from "@/lib/weatherEffects";
 import { CropTimer } from "./CropTimer";
 import { HarvestFloatPopup } from "./HarvestFloatPopup";
 import { PlantSprite } from "./PlantSprite";
@@ -54,6 +59,7 @@ export function CropSlot({
   const [harvestPopup, setHarvestPopup] = useState<LocalHarvestPopup | null>(null);
   const prevCycleStartedAtRef = useRef<number | null>(null);
   const { notifyEvent, isStep } = useTutorial();
+  const { weather } = useWeather();
 
   useEffect(() => {
     if (!planted) {
@@ -67,7 +73,7 @@ export function CropSlot({
       previousCycleStartedAt !== planted.cycleStartedAt;
 
     if (cycleReset) {
-      const cycleMs = SEED_STATS[planted.rarity].harvestCycleSeconds * 1000;
+      const cycleMs = getEffectiveCycleMs(planted.rarity, weather);
       const cycleAdvance = planted.cycleStartedAt - previousCycleStartedAt;
       const isLiveHarvest =
         cycleAdvance > 0 && cycleAdvance <= cycleMs + 2000;
@@ -75,7 +81,10 @@ export function CropSlot({
       if (isLiveHarvest) {
         setHarvestPopup({
           id: `${plotIndex}-${slotIndex}-${planted.cycleStartedAt}`,
-          cornAmount: SEED_STATS[planted.rarity].cornPerCycle,
+          cornAmount: Math.round(
+            SEED_STATS[planted.rarity].cornPerCycle *
+              getWeatherCornMultiplier(weather),
+          ),
         });
         if (isStep("wait-harvest")) {
           notifyEvent("harvest-received");
@@ -84,10 +93,10 @@ export function CropSlot({
     }
 
     prevCycleStartedAtRef.current = planted.cycleStartedAt;
-  }, [isStep, notifyEvent, now, planted, plotIndex, slotIndex]);
+  }, [isStep, notifyEvent, now, planted, plotIndex, slotIndex, weather]);
 
   if (planted) {
-    const { progress } = getCycleProgress(planted, now);
+    const { progress } = getCycleProgress(planted, now, weather);
 
     return (
       <button

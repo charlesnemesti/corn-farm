@@ -33,7 +33,7 @@ export function HudPanel({
   return (
     <div
       className={`relative shrink-0 hud-panel ${className}`}
-      style={{ width: panelWidth, height }}
+      style={{ width: panelWidth, height, maxWidth: "100%" }}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img

@@ -22,11 +22,19 @@ export type HarvestProgressResult = {
   offlineCapHit: boolean;
 };
 
+export type HarvestProgressOptions = {
+  growthMultiplier?: number;
+  cornMultiplier?: number;
+};
+
 /** Apply all harvest cycles completed before currentTime (works offline / in background). */
 export function applyHarvestProgress(
   state: GameState,
   currentTime = Date.now(),
+  options: HarvestProgressOptions = {},
 ): HarvestProgressResult {
+  const growthMultiplier = options.growthMultiplier ?? 1;
+  const cornMultiplier = options.cornMultiplier ?? 1;
   let cornGain = 0;
   let xpGain = 0;
   let changed = false;
@@ -39,12 +47,15 @@ export function applyHarvestProgress(
     lastProgressAt + Math.min(awayMs, OFFLINE_HARVEST_CAP_MS);
 
   const nextCrops = state.plantedCrops.map((crop) => {
-    const cycleMs = SEED_STATS[crop.rarity].harvestCycleSeconds * 1000;
+    const cycleMs =
+      (SEED_STATS[crop.rarity].harvestCycleSeconds * 1000) / growthMultiplier;
     const elapsed = effectiveCurrentTime - crop.cycleStartedAt;
     if (elapsed < cycleMs) return crop;
 
     const completedCycles = Math.floor(elapsed / cycleMs);
-    const cornPerCycle = SEED_STATS[crop.rarity].cornPerCycle;
+    const cornPerCycle = Math.round(
+      SEED_STATS[crop.rarity].cornPerCycle * cornMultiplier,
+    );
     cornGain += completedCycles * cornPerCycle;
     xpGain += completedCycles * XP_PER_CYCLE[crop.rarity];
     changed = true;

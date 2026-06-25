@@ -12,6 +12,7 @@ import {
 } from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
 import { usePlayMode } from "@/context/PlayModeProvider";
+import { useWeather } from "@/context/WeatherProvider";
 import { findPlantedCrop, type PlantedCrop } from "@/lib/cropState";
 import {
   clearAllSavedGameState,
@@ -24,6 +25,13 @@ import {
 } from "@/lib/gameState";
 import { applyHarvestProgress } from "@/lib/harvestProgress";
 import { CORN_SEED_ITEM } from "@/lib/itemConfig";
+import { getWeatherIndexAt } from "@/lib/weatherConfig";
+import {
+  getWeatherCornMultiplier,
+  getWeatherGrowthMultiplier,
+  tryWindUproot,
+  WEATHER_EFFECTS,
+} from "@/lib/weatherEffects";
 import { getLevelFromTotalXp } from "@/lib/levelConfig";
 import { SEED_STATS } from "@/lib/seedConfig";
 import {
@@ -86,6 +94,7 @@ type GameContextValue = {
   addDebugXp: (amount: number) => void;
   creditTreasuryCorn: (amount: number) => void;
   debitTreasuryCorn: (amount: number) => boolean;
+  windUprootNotice: string | null;
 };
 
 const GameContext = createContext<GameContextValue | null>(null);
@@ -110,6 +119,7 @@ function isPlantableSeed(entry: InventoryEntry | null): entry is InventoryEntry 
 
 export function GameProvider({ children }: { children: ReactNode }) {
   const { playMode } = usePlayMode();
+  const { weather } = useWeather();
   const { publicKey, connected } = useWallet();
   const [state, setState] = useState<GameState>(() => createInitialGameState());
   const stateRef = useRef(state);
@@ -119,6 +129,9 @@ export function GameProvider({ children }: { children: ReactNode }) {
   const [plantingSeedSlot, setPlantingSeedSlot] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [hydrated, setHydrated] = useState(false);
+  const [windUprootNotice, setWindUprootNotice] = useState<string | null>(null);
+  const windUprootsThisWindowRef = useRef(0);
+  const weatherWindowRef = useRef(getWeatherIndexAt(Date.now()));
 
   stateRef.current = state;
   playModeRef.current = playMode;
@@ -252,16 +265,72 @@ export function GameProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!hydrated) return;
+    if (document.visibilityState !== "visible") return;
 
     const currentTime = Date.now();
+    const windowIndex = getWeatherIndexAt(currentTime);
+    if (windowIndex !== weatherWindowRef.current) {
+      weatherWindowRef.current = windowIndex;
+      windUprootsThisWindowRef.current = 0;
+    }
 
     setState((prev) => {
-      const { state: next } = applyHarvestProgress(prev, currentTime);
+      const { state: next } = applyHarvestProgress(prev, currentTime, {
+        growthMultiplier: getWeatherGrowthMultiplier(weather),
+        cornMultiplier: getWeatherCornMultiplier(weather),
+      });
       if (next === prev) return prev;
       persistState(next);
       return next;
     });
-  }, [hydrated, now, persistState]);
+  }, [hydrated, now, persistState, weather]);
+
+  useEffect(() => {
+    if (!hydrated || demoMode) return;
+    if (weather !== "wind") return;
+
+    const windConfig = WEATHER_EFFECTS.wind;
+    const intervalMs = windConfig.uprootCheckIntervalMs ?? 45_000;
+    const maxUproots = windConfig.maxUprootsPerWindow ?? 1;
+    const uprootChance = windConfig.uprootChance ?? 0.015;
+
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+
+      const currentTime = Date.now();
+      const windowIndex = getWeatherIndexAt(currentTime);
+      if (windowIndex !== weatherWindowRef.current) {
+        weatherWindowRef.current = windowIndex;
+        windUprootsThisWindowRef.current = 0;
+      }
+
+      if (windUprootsThisWindowRef.current >= maxUproots) return;
+
+      let uprooted = false;
+
+      setState((prev) => {
+        const result = tryWindUproot(prev, uprootChance);
+        if (!result.uprooted) return prev;
+
+        windUprootsThisWindowRef.current += 1;
+        uprooted = true;
+        persistState(result.state);
+        return result.state;
+      });
+
+      if (uprooted) {
+        setWindUprootNotice("Wind uprooted a crop — seed returned to inventory");
+      }
+    }, intervalMs);
+
+    return () => window.clearInterval(intervalId);
+  }, [demoMode, hydrated, persistState, weather]);
+
+  useEffect(() => {
+    if (!windUprootNotice) return;
+    const timeoutId = window.setTimeout(() => setWindUprootNotice(null), 4000);
+    return () => window.clearTimeout(timeoutId);
+  }, [windUprootNotice]);
 
   const buyItem = useCallback((item: ShopItem): BuyResult => {
     let result: BuyResult = "success";
@@ -717,6 +786,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       addDebugXp,
       creditTreasuryCorn,
       debitTreasuryCorn,
+      windUprootNotice,
     }),
     [
       addDebugCorn,
@@ -747,6 +817,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       state.xp,
       unlockPlotRow,
       uprootCrop,
+      windUprootNotice,
     ],
   );
 

@@ -10,11 +10,11 @@ export function MusicControl() {
   const volumePercent = Math.round(volume * 100);
 
   return (
-    <div className="flex w-full items-center gap-1">
+    <div className="hud-action-button min-w-0 w-[5.25rem] shrink-0 sm:w-[6.5rem]">
       <button
         type="button"
         onClick={toggleMute}
-        className="flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm text-[9px] leading-none text-[#4a3428] transition hover:bg-[#4a3428]/10"
+        className="hud-action-button__icon hud-action-button__icon-btn"
         aria-label={muted ? "Unmute music" : "Mute music"}
         title={muted ? "Unmute music" : "Mute music"}
       >

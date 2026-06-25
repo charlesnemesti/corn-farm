@@ -2,6 +2,8 @@
 
 import type { SeedRarity } from "./seedConfig";
 import { SEED_STATS } from "./seedConfig";
+import type { WeatherType } from "./weatherConfig";
+import { getEffectiveCycleMs, getWeatherCornMultiplier, getWeatherGrowthMultiplier } from "./weatherEffects";
 
 export type PlantedCrop = {
   plotId: number;
@@ -27,8 +29,9 @@ export function findPlantedCrop(
 export function getCycleProgress(
   crop: PlantedCrop,
   now = Date.now(),
+  weather: WeatherType = "sunny",
 ): { remainingMs: number; progress: number } {
-  const cycleMs = SEED_STATS[crop.rarity].harvestCycleSeconds * 1000;
+  const cycleMs = getEffectiveCycleMs(crop.rarity, weather);
   const elapsed = now - crop.cycleStartedAt;
   const remainder = ((elapsed % cycleMs) + cycleMs) % cycleMs;
   const remainingMs = cycleMs - remainder;
@@ -47,10 +50,18 @@ export function formatRemainingTime(remainingMs: number): string {
 }
 
 /** Sum hourly $CORN output from all currently planted crops. */
-export function calculateCornPerHour(plantedCrops: PlantedCrop[]): number {
+export function calculateCornPerHour(
+  plantedCrops: PlantedCrop[],
+  weather: WeatherType = "sunny",
+): number {
+  const growth = getWeatherGrowthMultiplier(weather);
+  const cornMult = getWeatherCornMultiplier(weather);
+
   return plantedCrops.reduce((total, crop) => {
     const stats = SEED_STATS[crop.rarity];
-    const cornPerSecond = stats.cornPerCycle / stats.harvestCycleSeconds;
+    const effectiveCycleSeconds = stats.harvestCycleSeconds / growth;
+    const effectiveCornPerCycle = stats.cornPerCycle * cornMult;
+    const cornPerSecond = effectiveCornPerCycle / effectiveCycleSeconds;
     return total + cornPerSecond * 3600;
   }, 0);
 }
