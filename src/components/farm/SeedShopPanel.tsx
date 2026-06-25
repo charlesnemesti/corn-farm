@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useGame } from "@/context/GameProvider";
 import { useTutorial } from "@/context/TutorialProvider";
+import { PackDropRatesInfo } from "@/components/game/PackDropRatesInfo";
 import { SEED_PACK_ITEM } from "@/lib/shopConfig";
 
 export function SeedShopPanel() {
@@ -60,6 +61,10 @@ export function SeedShopPanel() {
         >
           Buy
         </button>
+
+        <div className="mt-3">
+          <PackDropRatesInfo compact />
+        </div>
       </article>
 
       {message ? (

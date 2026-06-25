@@ -4,6 +4,9 @@ export type PlayMode = "demo" | "wallet";
 
 export const PLAY_MODE_STORAGE_KEY = "solfarm-play-mode-v1";
 
+/** Demo mode only allows the starter row (plot 0). */
+export const DEMO_MAX_PLOT_ID = 0;
+
 export function loadPlayMode(): PlayMode | null {
   if (typeof window === "undefined") return null;
 
@@ -18,4 +21,8 @@ export function savePlayMode(mode: PlayMode) {
 
 export function clearPlayMode() {
   localStorage.removeItem(PLAY_MODE_STORAGE_KEY);
+}
+
+export function isDemoPlotLocked(plotId: number): boolean {
+  return plotId > DEMO_MAX_PLOT_ID;
 }

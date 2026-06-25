@@ -20,9 +20,9 @@ export function TreasuryControls() {
         title={
           walletMode
             ? walletConnected
-              ? "Deposit SOL or withdraw $CORN"
+              ? "Deposit or withdraw SPL $CORN"
               : "Connect wallet to use treasury"
-            : "Switch to wallet mode to use treasury"
+            : "Demo mode — connect wallet to use treasury"
         }
       >
         <span className="hud-action-button__icon" aria-hidden>

@@ -22,24 +22,37 @@ export type GameState = {
   unlockedPlotIds: number[];
   inventory: (InventoryEntry | null)[];
   plantedCrops: PlantedCrop[];
+  /** Timestamp of last harvest progress tick — used for offline cap. */
+  lastProgressAt?: number;
 };
 
 export const GAME_STATE_STORAGE_KEY = "solfarm-game-state-v5";
 export const LEGACY_GAME_STATE_STORAGE_KEY = "solfarm-game-state-v4";
 export const LEGACY_GAME_STATE_STORAGE_KEY_V3 = "solfarm-game-state-v3";
-export const STARTING_CORN = 5000;
+export const STARTING_CORN = 5_000;
+export const WALLET_STARTING_CORN = 0;
 
 export function createEmptyInventory(): (InventoryEntry | null)[] {
   return Array.from({ length: INVENTORY_SLOT_COUNT }, () => null);
 }
 
 export function createInitialGameState(): GameState {
+  return createGameStateWithCorn(STARTING_CORN);
+}
+
+export function createWalletInitialGameState(): GameState {
+  return createGameStateWithCorn(WALLET_STARTING_CORN);
+}
+
+function createGameStateWithCorn(corn: number): GameState {
+  const now = Date.now();
   return {
-    corn: STARTING_CORN,
+    corn,
     xp: 0,
     unlockedPlotIds: getStarterUnlockedPlotIds(),
     inventory: createEmptyInventory(),
     plantedCrops: [],
+    lastProgressAt: now,
   };
 }
 
@@ -182,6 +195,7 @@ export function saveGameState(state: GameState, currentTime = Date.now()) {
   const normalized: GameState = {
     ...progressed,
     unlockedPlotIds: normalizeUnlockedPlotIds(progressed.unlockedPlotIds),
+    lastProgressAt: currentTime,
   };
   localStorage.setItem(GAME_STATE_STORAGE_KEY, JSON.stringify(normalized));
   localStorage.removeItem(LEGACY_GAME_STATE_STORAGE_KEY);

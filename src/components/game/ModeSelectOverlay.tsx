@@ -34,8 +34,8 @@ export function ModeSelectOverlay() {
         </h2>
         <p className="mt-2 text-center text-sm leading-relaxed text-white/70">
           {awaitingWallet
-            ? "Wallet mode saves progress on-chain later. Connect to enter the farm."
-            : "Try the farm for free or play with your Solana wallet connected."}
+            ? "Wallet mode saves your farm server-side and syncs with the on-chain treasury."
+            : "Demo is free but limited to row 1 with no withdrawals. Connect a wallet for the full farm."}
         </p>
 
         {awaitingWallet ? (
@@ -60,7 +60,7 @@ export function ModeSelectOverlay() {
                 Demo (Free)
               </span>
               <span className="mt-1 block text-xs text-white/65">
-                Play instantly with local save — no wallet required.
+                One row only, local save, no treasury withdrawals.
               </span>
             </button>
 
@@ -73,7 +73,7 @@ export function ModeSelectOverlay() {
                 Normal (Wallet)
               </span>
               <span className="mt-1 block text-xs text-white/65">
-                Connect Phantom or Solflare to play in wallet mode.
+                Server save, leaderboard, treasury on Solana mainnet.
               </span>
             </button>
           </div>

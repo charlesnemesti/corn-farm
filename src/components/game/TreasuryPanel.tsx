@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTreasury } from "@/hooks/useTreasury";
-import { formatCooldown } from "@/lib/treasuryConfig";
+import { formatCooldown, getClusterLabel } from "@/lib/treasuryConfig";
 
 type TreasuryPanelProps = {
   open: boolean;
   onClose: () => void;
 };
 
-// Deposit / withdraw modal for the on-chain treasury.
+// Deposit / withdraw SPL $CORN through the on-chain treasury.
 export function TreasuryPanel({ open, onClose }: TreasuryPanelProps) {
   const {
     canDeposit,
@@ -19,6 +19,11 @@ export function TreasuryPanel({ open, onClose }: TreasuryPanelProps) {
     withdraw,
     status,
     clearStatus,
+    depositAmount,
+    setDepositAmount,
+    withdrawAmount,
+    setWithdrawAmount,
+    depositHint,
     withdrawHint,
     depositRateLabel,
     withdrawRateLabel,
@@ -26,6 +31,8 @@ export function TreasuryPanel({ open, onClose }: TreasuryPanelProps) {
     playerLevel,
     withdrawCooldownRemaining,
     isLoading,
+    minDepositCorn,
+    minWithdrawCorn,
   } = useTreasury();
   const [mounted, setMounted] = useState(false);
 
@@ -55,7 +62,8 @@ export function TreasuryPanel({ open, onClose }: TreasuryPanelProps) {
               Treasury
             </h2>
             <p className="mt-1 text-xs text-white/65">
-              Swap SOL and $CORN through the farm treasury on Solana devnet.
+              Deposit and withdraw SPL $CORN on {getClusterLabel()}. Deposits refill the
+              treasury; withdrawals unlock at level {withdrawMinLevel}.
             </p>
           </div>
           <button
@@ -71,48 +79,69 @@ export function TreasuryPanel({ open, onClose }: TreasuryPanelProps) {
 
         <div className="mt-4 space-y-3">
           <section className="rounded-lg border border-farm-sun/25 bg-farm-sun/10 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold text-farm-sun">Deposit</h3>
-                <p className="mt-1 text-xs text-white/70">{depositRateLabel}</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => void deposit()}
-                disabled={!canDeposit}
-                className="rounded-lg border border-farm-sun/40 bg-farm-sun/20 px-3 py-2 text-xs font-semibold text-farm-sun transition hover:bg-farm-sun/30 disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                Deposit
-              </button>
-            </div>
+            <h3 className="text-sm font-semibold text-farm-sun">Deposit $CORN</h3>
+            <p className="mt-1 text-xs text-white/70">{depositRateLabel}</p>
+            <p className="mt-1 text-[11px] text-white/55">{depositHint}</p>
+            <label className="mt-3 block text-[11px] font-medium text-white/70">
+              Amount to deposit
+              <input
+                type="number"
+                min={minDepositCorn}
+                step={1}
+                value={depositAmount}
+                onChange={(event) => setDepositAmount(event.target.value)}
+                disabled={isLoading}
+                className="mt-1 w-full rounded-lg border border-farm-sun/30 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-farm-sun/60 disabled:opacity-50"
+                placeholder={`Min ${minDepositCorn}`}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void deposit()}
+              disabled={!canDeposit}
+              className="mt-3 w-full rounded-lg border border-farm-sun/40 bg-farm-sun/20 px-3 py-2 text-xs font-semibold text-farm-sun transition hover:bg-farm-sun/30 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Deposit $CORN
+            </button>
           </section>
 
           <section className="rounded-lg border border-white/15 bg-white/5 p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-sm font-semibold text-white">Withdraw</h3>
-                <p className="mt-1 text-xs text-white/70">{withdrawRateLabel}</p>
-                <p className="mt-1 text-[11px] text-white/55">{withdrawHint}</p>
-                {playerLevel < withdrawMinLevel ? (
-                  <p className="mt-1 text-[11px] font-semibold text-amber-200/90">
-                    Locked until level {withdrawMinLevel}.
-                  </p>
-                ) : null}
-                {withdrawCooldownRemaining > 0 ? (
-                  <p className="mt-1 text-[11px] font-semibold text-amber-200/90">
-                    Cooldown: {formatCooldown(withdrawCooldownRemaining)}
-                  </p>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                onClick={() => void withdraw()}
-                disabled={!canWithdraw}
-                className="rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-45"
-              >
-                Withdraw
-              </button>
-            </div>
+            <h3 className="text-sm font-semibold text-white">Withdraw $CORN</h3>
+            <p className="mt-1 text-xs text-white/70">{withdrawRateLabel}</p>
+            <p className="mt-1 text-[11px] text-white/55">{withdrawHint}</p>
+            {playerLevel < withdrawMinLevel ? (
+              <p className="mt-1 text-[11px] font-semibold text-amber-200/90">
+                Locked until level {withdrawMinLevel}. Treasury is seeded by the team at
+                launch and grows with every deposit — farming to level {withdrawMinLevel}{" "}
+                keeps the pool sustainable.
+              </p>
+            ) : null}
+            {withdrawCooldownRemaining > 0 ? (
+              <p className="mt-1 text-[11px] font-semibold text-amber-200/90">
+                Cooldown: {formatCooldown(withdrawCooldownRemaining)}
+              </p>
+            ) : null}
+            <label className="mt-3 block text-[11px] font-medium text-white/70">
+              Amount to withdraw
+              <input
+                type="number"
+                min={minWithdrawCorn}
+                step={1}
+                value={withdrawAmount}
+                onChange={(event) => setWithdrawAmount(event.target.value)}
+                disabled={isLoading}
+                className="mt-1 w-full rounded-lg border border-white/20 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-white/40 disabled:opacity-50"
+                placeholder={`Min ${minWithdrawCorn}`}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => void withdraw()}
+              disabled={!canWithdraw}
+              className="mt-3 w-full rounded-lg border border-white/20 bg-white/10 px-3 py-2 text-xs font-semibold text-white transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              Withdraw $CORN
+            </button>
           </section>
         </div>
 

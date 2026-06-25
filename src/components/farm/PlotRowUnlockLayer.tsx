@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePlayMode } from "@/context/PlayModeProvider";
 import { useGame } from "@/context/GameProvider";
 import { designToScreen, type CoverTransform } from "@/hooks/useCoverTransform";
 import { ConfirmDialog } from "@/components/game/ConfirmDialog";
@@ -17,8 +18,11 @@ type PlotRowUnlockLayerProps = {
 };
 
 // Locked rows — label only; click anywhere on the row to unlock.
+const ROW_UNLOCK_LABEL_OFFSET_Y = -5;
 export function PlotRowUnlockLayer({ transform }: PlotRowUnlockLayerProps) {
   const { corn, playerLevel, unlockedPlotIds, unlockPlotRow } = useGame();
+  const { playMode } = usePlayMode();
+  const demoMode = playMode === "demo";
   const [targetPlotId, setTargetPlotId] = useState<number | null>(null);
   const [unlockMessage, setUnlockMessage] = useState<string | null>(null);
 
@@ -27,8 +31,8 @@ export function PlotRowUnlockLayer({ transform }: PlotRowUnlockLayerProps) {
 
   const purchaseCheck = useMemo(() => {
     if (targetPlotId === null) return null;
-    return canPurchasePlotRow(targetPlotId, unlockedPlotIds, playerLevel, corn);
-  }, [corn, playerLevel, targetPlotId, unlockedPlotIds]);
+    return canPurchasePlotRow(targetPlotId, unlockedPlotIds, playerLevel, corn, demoMode);
+  }, [corn, demoMode, playerLevel, targetPlotId, unlockedPlotIds]);
 
   const dialogMessage = useMemo(() => {
     if (targetPlotId === null || !targetConfig) return "";
@@ -68,6 +72,7 @@ export function PlotRowUnlockLayer({ transform }: PlotRowUnlockLayerProps) {
             unlockedPlotIds,
             playerLevel,
             corn,
+            demoMode,
           );
           const ready = check.ok;
           const rowHeight = Math.max(26, 32 * transform.scale);
@@ -81,7 +86,7 @@ export function PlotRowUnlockLayer({ transform }: PlotRowUnlockLayerProps) {
                 className="pointer-events-auto absolute cursor-pointer"
                 style={{
                   left: minX - 24 * transform.scale,
-                  top: centerY - rowHeight / 2,
+                  top: centerY - rowHeight / 2 + ROW_UNLOCK_LABEL_OFFSET_Y,
                   width: rowWidth,
                   height: rowHeight,
                 }}
@@ -94,9 +99,10 @@ export function PlotRowUnlockLayer({ transform }: PlotRowUnlockLayerProps) {
                 }`}
                 style={{
                   left: (minX + maxX) / 2,
-                  top: centerY,
+                  top: centerY + ROW_UNLOCK_LABEL_OFFSET_Y,
                 }}
               >
+                {demoMode ? "Connect wallet · " : ""}
                 🔒 Row {plot.plotId + 1} · Lv {config.minLevel} ·{" "}
                 {config.cornCost.toLocaleString("en-US")} $CORN
               </p>

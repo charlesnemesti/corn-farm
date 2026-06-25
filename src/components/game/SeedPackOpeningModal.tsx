@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useGame } from "@/context/GameProvider";
 import { useTutorial } from "@/context/TutorialProvider";
+import { PackDropRatesInfo } from "@/components/game/PackDropRatesInfo";
 import { SEED_PACK_ITEM } from "@/lib/shopConfig";
 import {
   RARITY_GLOW_CLASS,
@@ -117,6 +118,12 @@ export function SeedPackOpeningModal({
             ? "Your seeds are ready to collect."
             : "Revealing 3 seeds from your pack."}
         </p>
+
+        {phase === "pack" ? (
+          <div className="mt-4">
+            <PackDropRatesInfo compact />
+          </div>
+        ) : null}
 
         <div className="mt-6 flex min-h-[180px] flex-col items-center justify-center">
           {phase === "pack" ? (

@@ -6,6 +6,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { DebugBottomBar } from "@/components/layout/DebugBottomBar";
 import { Header } from "@/components/layout/Header";
 import { ModeSelectOverlay } from "@/components/game/ModeSelectOverlay";
+import { DemoConnectBanner } from "@/components/game/DemoConnectBanner";
 import { TutorialOverlay } from "@/components/game/TutorialOverlay";
 import { DebugUiProvider } from "@/context/DebugUiProvider";
 import { DragProvider } from "@/context/DragProvider";
@@ -56,6 +57,7 @@ export default function RootLayout({
                         {children}
                         <TutorialOverlay />
                         <ModeSelectOverlay />
+                        <DemoConnectBanner />
                       </DragProvider>
                     </InventoryMenuProvider>
                   </TutorialProvider>

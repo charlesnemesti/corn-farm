@@ -10,10 +10,13 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useWallet } from "@solana/wallet-adapter-react";
+import { usePlayMode } from "@/context/PlayModeProvider";
 import { findPlantedCrop, type PlantedCrop } from "@/lib/cropState";
 import {
   clearAllSavedGameState,
   createInitialGameState,
+  createWalletInitialGameState,
   loadGameState,
   saveGameState,
   type GameState,
@@ -25,11 +28,13 @@ import { getLevelFromTotalXp } from "@/lib/levelConfig";
 import { SEED_STATS } from "@/lib/seedConfig";
 import {
   canPurchasePlotRow,
+  clampUnlockedPlotsForDemo,
   getPlotUnlockConfig,
   isPlotRowUnlocked,
   normalizeUnlockedPlotIds,
   type UnlockPlotResult,
 } from "@/lib/plotUnlock";
+import { DEMO_MAX_PLOT_ID } from "@/lib/playMode";
 import {
   canFitOpenedSeeds,
   type RolledSeed,
@@ -38,6 +43,10 @@ import {
 import type { ShopItem } from "@/lib/shopConfig";
 import { TUTORIAL_HARVEST_WAIT_MS, clearTutorialCompleted } from "@/lib/tutorialConfig";
 import { clearTreasuryState } from "@/lib/treasuryState";
+import {
+  fetchWalletGameState,
+  saveWalletGameState,
+} from "@/lib/walletPersistence";
 
 type BuyResult = "success" | "insufficient-corn" | "inventory-full";
 type CommitSeedsResult = "success" | "inventory-full" | "invalid-pack";
@@ -80,8 +89,14 @@ type GameContextValue = {
 
 const GameContext = createContext<GameContextValue | null>(null);
 
-function persistState(state: GameState) {
-  saveGameState(state);
+const WALLET_SAVE_DEBOUNCE_MS = 2_000;
+
+function applyDemoLimits(state: GameState): GameState {
+  return {
+    ...state,
+    unlockedPlotIds: clampUnlockedPlotsForDemo(state.unlockedPlotIds, true),
+    plantedCrops: state.plantedCrops.filter((crop) => crop.plotId <= DEMO_MAX_PLOT_ID),
+  };
 }
 
 function isPlantableSeed(entry: InventoryEntry | null): entry is InventoryEntry {
@@ -93,22 +108,106 @@ function isPlantableSeed(entry: InventoryEntry | null): entry is InventoryEntry 
 }
 
 export function GameProvider({ children }: { children: ReactNode }) {
+  const { playMode } = usePlayMode();
+  const { publicKey, connected } = useWallet();
   const [state, setState] = useState<GameState>(() => createInitialGameState());
   const stateRef = useRef(state);
+  const playModeRef = useRef(playMode);
+  const walletRef = useRef(publicKey?.toBase58() ?? null);
+  const walletSaveTimerRef = useRef<number | null>(null);
   const [plantingSeedSlot, setPlantingSeedSlot] = useState<number | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [hydrated, setHydrated] = useState(false);
 
   stateRef.current = state;
+  playModeRef.current = playMode;
+  walletRef.current = publicKey?.toBase58() ?? null;
+
+  const demoMode = playMode === "demo";
+  const walletAddress = publicKey?.toBase58() ?? null;
+
+  const flushPersist = useCallback((next: GameState, currentTime = Date.now()) => {
+    const mode = playModeRef.current;
+    const wallet = walletRef.current;
+
+    if (walletSaveTimerRef.current !== null) {
+      window.clearTimeout(walletSaveTimerRef.current);
+      walletSaveTimerRef.current = null;
+    }
+
+    if (mode === "wallet" && wallet) {
+      void saveWalletGameState(wallet, next);
+      return;
+    }
+
+    saveGameState(next, currentTime);
+  }, []);
+
+  const persistState = useCallback((next: GameState) => {
+    const mode = playModeRef.current;
+    const wallet = walletRef.current;
+
+    if (mode === "wallet" && wallet) {
+      if (walletSaveTimerRef.current !== null) {
+        window.clearTimeout(walletSaveTimerRef.current);
+      }
+      walletSaveTimerRef.current = window.setTimeout(() => {
+        void saveWalletGameState(wallet, next);
+        walletSaveTimerRef.current = null;
+      }, WALLET_SAVE_DEBOUNCE_MS);
+      return;
+    }
+
+    saveGameState(next);
+  }, []);
 
   useEffect(() => {
-    const saved = loadGameState();
-    if (saved) {
-      setState(saved);
-      saveGameState(saved);
+    let cancelled = false;
+
+    async function loadSavedState() {
+      if (playMode === "wallet" && connected && walletAddress) {
+        const remote = await fetchWalletGameState(walletAddress);
+        if (cancelled) return;
+        if (remote) {
+          setState(remote);
+          persistState(remote);
+        } else {
+          const fresh = createWalletInitialGameState();
+          setState(fresh);
+          void saveWalletGameState(walletAddress, fresh);
+        }
+        setHydrated(true);
+        return;
+      }
+
+      if (playMode === "wallet") {
+        setHydrated(true);
+        return;
+      }
+
+      if (playMode === "demo") {
+        const saved = loadGameState();
+        if (cancelled) return;
+        if (saved) {
+          const limited = applyDemoLimits(saved);
+          setState(limited);
+          saveGameState(limited);
+        }
+        setHydrated(true);
+        return;
+      }
+
+      if (playMode === null) {
+        setHydrated(true);
+      }
     }
-    setHydrated(true);
-  }, []);
+
+    void loadSavedState();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [connected, playMode, persistState, walletAddress]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -123,14 +222,14 @@ export function GameProvider({ children }: { children: ReactNode }) {
       setState((prev) => {
         const { state: next } = applyHarvestProgress(prev, currentTime);
         if (next === prev) return prev;
-        saveGameState(next, currentTime);
+        persistState(next);
         return next;
       });
       setNow(currentTime);
     };
 
     const handlePageHide = () => {
-      saveGameState(stateRef.current);
+      flushPersist(stateRef.current);
     };
 
     const handleVisibilityChange = () => {
@@ -138,7 +237,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         syncProgress();
         return;
       }
-      saveGameState(stateRef.current);
+      flushPersist(stateRef.current);
     };
 
     window.addEventListener("pagehide", handlePageHide);
@@ -148,7 +247,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
       window.removeEventListener("pagehide", handlePageHide);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
-  }, [hydrated]);
+  }, [flushPersist, hydrated, persistState]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -158,10 +257,10 @@ export function GameProvider({ children }: { children: ReactNode }) {
     setState((prev) => {
       const { state: next } = applyHarvestProgress(prev, currentTime);
       if (next === prev) return prev;
-      saveGameState(next, currentTime);
+      persistState(next);
       return next;
     });
-  }, [hydrated, now]);
+  }, [hydrated, now, persistState]);
 
   const buyItem = useCallback((item: ShopItem): BuyResult => {
     let result: BuyResult = "success";
@@ -191,7 +290,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
 
     return result;
-  }, []);
+  }, [persistState]);
 
   const canOpenSeedPack = useCallback(
     (slotIndex: number) => canFitOpenedSeeds(state.inventory, slotIndex),
@@ -490,6 +589,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
         prev.unlockedPlotIds,
         playerLevel,
         prev.corn,
+        playModeRef.current === "demo",
       );
 
       if (!check.ok) {
@@ -513,7 +613,7 @@ export function GameProvider({ children }: { children: ReactNode }) {
     });
 
     return result;
-  }, []);
+  }, [persistState]);
 
   const resetSavedGame = useCallback(() => {
     clearAllSavedGameState();

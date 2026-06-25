@@ -2,13 +2,21 @@ import { NextResponse } from "next/server";
 import {
   Connection,
   PublicKey,
-  SystemProgram,
   Transaction,
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import {
+  createAssociatedTokenAccountIdempotentInstruction,
+  createTransferInstruction,
+  getAccount,
+  getAssociatedTokenAddressSync,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
+import {
+  cornToRawAmount,
+  getCornMintPublicKey,
+  MIN_WITHDRAW_CORN,
   WITHDRAW_COOLDOWN_MS,
-  WITHDRAW_SOL_LAMPORTS,
   getSolanaRpcEndpoint,
 } from "@/lib/treasuryConfig";
 import { loadTreasuryKeypair } from "@/lib/treasuryServer";
@@ -19,6 +27,7 @@ const withdrawalTimestamps = new Map<string, number>();
 
 type WithdrawRequest = {
   wallet?: string;
+  corn?: number;
 };
 
 function parseWalletAddress(value: string | undefined): PublicKey | null {
@@ -45,6 +54,23 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "A valid wallet address is required." }, { status: 400 });
   }
 
+  const withdrawCorn = body.corn;
+  if (
+    typeof withdrawCorn !== "number" ||
+    !Number.isFinite(withdrawCorn) ||
+    withdrawCorn < MIN_WITHDRAW_CORN
+  ) {
+    return NextResponse.json(
+      { error: `Minimum withdrawal is ${MIN_WITHDRAW_CORN} $CORN.` },
+      { status: 400 },
+    );
+  }
+
+  const mintPubkey = getCornMintPublicKey();
+  if (!mintPubkey) {
+    return NextResponse.json({ error: "$CORN mint is not configured." }, { status: 503 });
+  }
+
   const treasuryKeypair = loadTreasuryKeypair();
   if (!treasuryKeypair) {
     return NextResponse.json(
@@ -68,22 +94,58 @@ export async function POST(request: Request) {
   }
 
   const connection = new Connection(getSolanaRpcEndpoint(), "confirmed");
-  const treasuryBalance = await connection.getBalance(treasuryKeypair.publicKey);
+  const treasuryPubkey = treasuryKeypair.publicKey;
+  const treasuryAta = getAssociatedTokenAddressSync(mintPubkey, treasuryPubkey);
+  const destinationAta = getAssociatedTokenAddressSync(mintPubkey, destination);
+  const amountRaw = cornToRawAmount(withdrawCorn);
 
-  if (treasuryBalance < WITHDRAW_SOL_LAMPORTS + 5000) {
+  const solBalance = await connection.getBalance(treasuryPubkey);
+  if (solBalance < 10_000) {
     return NextResponse.json(
-      { error: "Treasury does not have enough SOL for this withdrawal." },
+      { error: "Treasury does not have enough SOL for transaction fees." },
       { status: 503 },
     );
   }
 
   try {
-    const transaction = new Transaction().add(
-      SystemProgram.transfer({
-        fromPubkey: treasuryKeypair.publicKey,
-        toPubkey: destination,
-        lamports: WITHDRAW_SOL_LAMPORTS,
-      }),
+    const treasuryToken = await getAccount(connection, treasuryAta);
+    if (BigInt(treasuryToken.amount) < amountRaw) {
+      return NextResponse.json(
+        { error: "Treasury does not have enough $CORN for this withdrawal." },
+        { status: 503 },
+      );
+    }
+  } catch {
+    return NextResponse.json(
+      { error: "Treasury $CORN token account is not set up yet." },
+      { status: 503 },
+    );
+  }
+
+  try {
+    const transaction = new Transaction();
+
+    const destinationAtaInfo = await connection.getAccountInfo(destinationAta);
+    if (!destinationAtaInfo) {
+      transaction.add(
+        createAssociatedTokenAccountIdempotentInstruction(
+          treasuryPubkey,
+          destinationAta,
+          destination,
+          mintPubkey,
+        ),
+      );
+    }
+
+    transaction.add(
+      createTransferInstruction(
+        treasuryAta,
+        destinationAta,
+        treasuryPubkey,
+        amountRaw,
+        [],
+        TOKEN_PROGRAM_ID,
+      ),
     );
 
     const signature = await sendAndConfirmTransaction(
@@ -95,7 +157,7 @@ export async function POST(request: Request) {
 
     withdrawalTimestamps.set(walletKey, now);
 
-    return NextResponse.json({ signature });
+    return NextResponse.json({ signature, corn: withdrawCorn });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Withdrawal transaction failed.";

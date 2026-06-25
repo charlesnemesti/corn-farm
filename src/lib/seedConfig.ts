@@ -20,6 +20,15 @@ export const RARITY_LABELS: Record<SeedRarity, string> = {
   epic: "Epic Seed",
 };
 
+/** Human-readable drop rate lines for pack UI. */
+export function getPackDropRateLines(): { rarity: SeedRarity; label: string; percent: number }[] {
+  return (Object.keys(RARITY_DROP_WEIGHTS) as SeedRarity[]).map((rarity) => ({
+    rarity,
+    label: RARITY_LABELS[rarity],
+    percent: RARITY_DROP_WEIGHTS[rarity],
+  }));
+}
+
 export const RARITY_TEXT_CLASS: Record<SeedRarity, string> = {
   common: "text-green-400",
   rare: "text-blue-400",

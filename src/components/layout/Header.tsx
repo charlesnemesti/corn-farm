@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { CornCounter } from "@/components/layout/CornCounter";
 import { HudPanel } from "@/components/layout/HudPanel";
 import { MusicControl } from "@/components/layout/MusicControl";
@@ -46,6 +47,12 @@ export function Header() {
         >
           <MusicControl />
         </HudPanel>
+        <Link
+          href="/tokenomics"
+          className="pointer-events-auto rounded-lg border border-white/15 bg-black/70 px-2 py-1 text-[10px] font-semibold text-farm-sun transition hover:bg-black/85"
+        >
+          Tokenomics
+        </Link>
       </div>
 
       <div className="pointer-events-auto absolute top-2 right-2 sm:top-3 sm:right-3">

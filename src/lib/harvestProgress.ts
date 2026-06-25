@@ -5,6 +5,9 @@ import type { GameState } from "./gameState";
 import { XP_PER_CYCLE } from "./levelConfig";
 import { SEED_STATS } from "./seedConfig";
 
+/** Max offline harvest accrual — "the sun only reaches so far." */
+export const OFFLINE_HARVEST_CAP_MS = 10 * 60 * 60 * 1000;
+
 export type HarvestReward = {
   plotId: number;
   slotId: number;
@@ -16,6 +19,7 @@ export type HarvestReward = {
 export type HarvestProgressResult = {
   state: GameState;
   rewards: HarvestReward[];
+  offlineCapHit: boolean;
 };
 
 /** Apply all harvest cycles completed before currentTime (works offline / in background). */
@@ -28,9 +32,15 @@ export function applyHarvestProgress(
   let changed = false;
   const rewards: HarvestReward[] = [];
 
+  const lastProgressAt = state.lastProgressAt ?? currentTime;
+  const awayMs = Math.max(0, currentTime - lastProgressAt);
+  const offlineCapHit = awayMs > OFFLINE_HARVEST_CAP_MS;
+  const effectiveCurrentTime =
+    lastProgressAt + Math.min(awayMs, OFFLINE_HARVEST_CAP_MS);
+
   const nextCrops = state.plantedCrops.map((crop) => {
     const cycleMs = SEED_STATS[crop.rarity].harvestCycleSeconds * 1000;
-    const elapsed = currentTime - crop.cycleStartedAt;
+    const elapsed = effectiveCurrentTime - crop.cycleStartedAt;
     if (elapsed < cycleMs) return crop;
 
     const completedCycles = Math.floor(elapsed / cycleMs);
@@ -54,7 +64,13 @@ export function applyHarvestProgress(
     };
   });
 
-  if (!changed) return { state, rewards: [] };
+  if (!changed) {
+    return {
+      state: { ...state, lastProgressAt: currentTime },
+      rewards: [],
+      offlineCapHit,
+    };
+  }
 
   return {
     state: {
@@ -62,8 +78,10 @@ export function applyHarvestProgress(
       corn: state.corn + cornGain,
       xp: state.xp + xpGain,
       plantedCrops: nextCrops,
+      lastProgressAt: currentTime,
     },
     rewards,
+    offlineCapHit,
   };
 }
 

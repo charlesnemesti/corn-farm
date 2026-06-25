@@ -5,21 +5,20 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { useGame } from "@/context/GameProvider";
 import { usePlayMode } from "@/context/PlayModeProvider";
 import {
-  DEPOSIT_CORN_REWARD,
-  DEPOSIT_SOL_AMOUNT,
-  WITHDRAW_CORN_COST,
+  MIN_DEPOSIT_CORN,
+  MIN_WITHDRAW_CORN,
   WITHDRAW_MIN_LEVEL,
-  WITHDRAW_SOL_AMOUNT,
   formatCooldown,
-  formatSolAmount,
+  formatCornAmount,
+  getCornMintPublicKey,
   getTreasuryPublicKey,
 } from "@/lib/treasuryConfig";
 import {
-  buildDepositTransaction,
+  buildCornDepositTransaction,
   getTreasuryBlockMessage,
   getWithdrawBlockReason,
   getWithdrawCooldownRemaining,
-  verifyDepositTransaction,
+  verifyCornDepositTransaction,
   type TreasuryBlockReason,
 } from "@/lib/treasury";
 import {
@@ -28,8 +27,6 @@ import {
   markDepositProcessed,
   setLastWithdrawAt,
 } from "@/lib/treasuryState";
-
-export type TreasuryAction = "deposit" | "withdraw";
 
 export type TreasuryStatus = {
   type: "idle" | "loading" | "success" | "error";
@@ -49,6 +46,8 @@ export function useTreasury() {
     debitTreasuryCorn,
   } = useGame();
 
+  const [depositAmount, setDepositAmount] = useState(String(MIN_DEPOSIT_CORN * 100));
+  const [withdrawAmount, setWithdrawAmount] = useState(String(MIN_WITHDRAW_CORN * 100));
   const [status, setStatus] = useState<TreasuryStatus>({
     type: "idle",
     message: "",
@@ -59,7 +58,16 @@ export function useTreasury() {
 
   const walletAddress = publicKey?.toBase58() ?? null;
   const treasuryPubkey = getTreasuryPublicKey();
+  const mintPubkey = getCornMintPublicKey();
   const walletMode = playMode === "wallet";
+
+  const parsedDepositAmount = Number.parseFloat(depositAmount.replace(/,/g, ""));
+  const depositAmountValid =
+    Number.isFinite(parsedDepositAmount) && parsedDepositAmount >= MIN_DEPOSIT_CORN;
+
+  const parsedWithdrawAmount = Number.parseFloat(withdrawAmount.replace(/,/g, ""));
+  const withdrawAmountValid =
+    Number.isFinite(parsedWithdrawAmount) && parsedWithdrawAmount >= MIN_WITHDRAW_CORN;
 
   useEffect(() => {
     if (!walletAddress) {
@@ -73,17 +81,42 @@ export function useTreasury() {
   const lastWithdrawAt = walletTreasuryState?.lastWithdrawAt ?? 0;
   const withdrawCooldownRemaining = getWithdrawCooldownRemaining(lastWithdrawAt, now);
 
+  const depositBlockReason = useMemo((): TreasuryBlockReason | null => {
+    if (!walletMode) return "demo-mode";
+    if (!connected || !publicKey) return "wallet-not-connected";
+    if (!treasuryPubkey) return "treasury-not-configured";
+    if (!mintPubkey) return "mint-not-configured";
+    if (!depositAmountValid) return "invalid-deposit-amount";
+    return null;
+  }, [
+    connected,
+    depositAmountValid,
+    mintPubkey,
+    publicKey,
+    treasuryPubkey,
+    walletMode,
+  ]);
+
   const withdrawBlockReason = useMemo(() => {
     if (!walletMode) return "demo-mode" as TreasuryBlockReason;
     if (!connected || !publicKey) return "wallet-not-connected" as TreasuryBlockReason;
     if (!treasuryPubkey) return "treasury-not-configured" as TreasuryBlockReason;
+    if (!mintPubkey) return "mint-not-configured" as TreasuryBlockReason;
 
-    return getWithdrawBlockReason(playerLevel, corn, lastWithdrawAt, now);
+    return getWithdrawBlockReason(
+      playerLevel,
+      corn,
+      lastWithdrawAt,
+      now,
+      parsedWithdrawAmount,
+    );
   }, [
     connected,
     corn,
     lastWithdrawAt,
+    mintPubkey,
     now,
+    parsedWithdrawAmount,
     playerLevel,
     publicKey,
     treasuryPubkey,
@@ -91,17 +124,13 @@ export function useTreasury() {
   ]);
 
   const canDeposit =
-    hydrated &&
-    walletMode &&
-    connected &&
-    publicKey !== null &&
-    treasuryPubkey !== null &&
-    status.type !== "loading";
+    hydrated && depositBlockReason === null && status.type !== "loading";
 
-  const canWithdraw = canDeposit && withdrawBlockReason === null;
+  const canWithdraw =
+    hydrated && withdrawBlockReason === null && status.type !== "loading";
 
   const deposit = useCallback(async () => {
-    if (!publicKey || !treasuryPubkey) {
+    if (!publicKey || !treasuryPubkey || !mintPubkey) {
       setStatus({
         type: "error",
         message: getTreasuryBlockMessage("wallet-not-connected"),
@@ -109,18 +138,28 @@ export function useTreasury() {
       return;
     }
 
-    if (!walletMode) {
-      setStatus({ type: "error", message: getTreasuryBlockMessage("demo-mode") });
+    if (depositBlockReason) {
+      setStatus({
+        type: "error",
+        message: getTreasuryBlockMessage(depositBlockReason),
+      });
       return;
     }
 
+    const amount = parsedDepositAmount;
+
     setStatus({
       type: "loading",
-      message: `Sending ${formatSolAmount(DEPOSIT_SOL_AMOUNT)}…`,
+      message: `Sending ${formatCornAmount(amount)} to treasury…`,
     });
 
     try {
-      const transaction = buildDepositTransaction(publicKey, treasuryPubkey);
+      const transaction = await buildCornDepositTransaction(
+        connection,
+        publicKey,
+        treasuryPubkey,
+        amount,
+      );
       const { blockhash, lastValidBlockHeight } =
         await connection.getLatestBlockhash("confirmed");
       transaction.recentBlockhash = blockhash;
@@ -142,11 +181,12 @@ export function useTreasury() {
         return;
       }
 
-      const verified = await verifyDepositTransaction(
+      const verified = await verifyCornDepositTransaction(
         connection,
         signature,
         publicKey,
         treasuryPubkey,
+        amount,
       );
 
       if (!verified) {
@@ -158,12 +198,12 @@ export function useTreasury() {
       }
 
       markDepositProcessed(publicKey.toBase58(), signature);
-      creditTreasuryCorn(DEPOSIT_CORN_REWARD);
+      creditTreasuryCorn(amount);
 
       setWalletTreasuryState(loadWalletTreasuryState(publicKey.toBase58()));
       setStatus({
         type: "success",
-        message: `Deposited ${formatSolAmount(DEPOSIT_SOL_AMOUNT)} and received ${DEPOSIT_CORN_REWARD.toLocaleString("en-US")} $CORN.`,
+        message: `Deposited ${formatCornAmount(amount)}. In-game balance updated.`,
       });
     } catch (error) {
       const message =
@@ -173,23 +213,20 @@ export function useTreasury() {
   }, [
     connection,
     creditTreasuryCorn,
+    depositBlockReason,
+    mintPubkey,
+    parsedDepositAmount,
     publicKey,
     sendTransaction,
     treasuryPubkey,
-    walletMode,
   ]);
 
   const withdraw = useCallback(async () => {
-    if (!publicKey || !treasuryPubkey) {
+    if (!publicKey || !treasuryPubkey || !mintPubkey) {
       setStatus({
         type: "error",
         message: getTreasuryBlockMessage("wallet-not-connected"),
       });
-      return;
-    }
-
-    if (!walletMode) {
-      setStatus({ type: "error", message: getTreasuryBlockMessage("demo-mode") });
       return;
     }
 
@@ -201,7 +238,9 @@ export function useTreasury() {
       return;
     }
 
-    if (!debitTreasuryCorn(WITHDRAW_CORN_COST)) {
+    const amount = parsedWithdrawAmount;
+
+    if (!debitTreasuryCorn(amount)) {
       setStatus({
         type: "error",
         message: getTreasuryBlockMessage("insufficient-corn"),
@@ -211,24 +250,25 @@ export function useTreasury() {
 
     setStatus({
       type: "loading",
-      message: `Withdrawing ${formatSolAmount(WITHDRAW_SOL_AMOUNT)}…`,
+      message: `Withdrawing ${formatCornAmount(amount)}…`,
     });
 
     try {
       const response = await fetch("/api/treasury/withdraw", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wallet: publicKey.toBase58() }),
+        body: JSON.stringify({ wallet: publicKey.toBase58(), corn: amount }),
       });
 
       const payload = (await response.json()) as {
         error?: string;
         signature?: string;
         remainingMs?: number;
+        corn?: number;
       };
 
       if (!response.ok) {
-        creditTreasuryCorn(WITHDRAW_CORN_COST);
+        creditTreasuryCorn(amount);
 
         if (response.status === 429 && payload.remainingMs) {
           setStatus({
@@ -245,16 +285,15 @@ export function useTreasury() {
         return;
       }
 
-      const timestamp = Date.now();
-      setLastWithdrawAt(publicKey.toBase58(), timestamp);
+      setLastWithdrawAt(publicKey.toBase58(), Date.now());
       setWalletTreasuryState(loadWalletTreasuryState(publicKey.toBase58()));
 
       setStatus({
         type: "success",
-        message: `Withdrew ${WITHDRAW_CORN_COST.toLocaleString("en-US")} $CORN for ${formatSolAmount(WITHDRAW_SOL_AMOUNT)}.`,
+        message: `Withdrew ${formatCornAmount(amount)} SPL to your wallet.`,
       });
     } catch (error) {
-      creditTreasuryCorn(WITHDRAW_CORN_COST);
+      creditTreasuryCorn(amount);
       const message =
         error instanceof Error ? error.message : "Withdrawal failed. Your $CORN was restored.";
       setStatus({ type: "error", message });
@@ -262,9 +301,10 @@ export function useTreasury() {
   }, [
     creditTreasuryCorn,
     debitTreasuryCorn,
+    mintPubkey,
+    parsedWithdrawAmount,
     publicKey,
     treasuryPubkey,
-    walletMode,
     withdrawBlockReason,
   ]);
 
@@ -276,24 +316,35 @@ export function useTreasury() {
     if (!walletMode) return "Available in wallet mode only.";
     if (!connected) return "Connect your wallet first.";
     if (!treasuryPubkey) return "Treasury wallet is not configured.";
+    if (!mintPubkey) return "$CORN mint is not configured.";
     if (playerLevel < WITHDRAW_MIN_LEVEL) {
-      return `Unlocks at level ${WITHDRAW_MIN_LEVEL}. You are level ${playerLevel}.`;
+      return `Unlocks at level ${WITHDRAW_MIN_LEVEL} — protects treasury while it is seeded at launch and refilled by deposits. You are level ${playerLevel}.`;
     }
-    if (corn < WITHDRAW_CORN_COST) {
-      return `Need ${WITHDRAW_CORN_COST.toLocaleString("en-US")} $CORN.`;
+    if (corn < parsedWithdrawAmount) {
+      return `Need ${parsedWithdrawAmount.toLocaleString("en-US")} in-game $CORN.`;
     }
     if (withdrawCooldownRemaining > 0) {
       return `Cooldown: ${formatCooldown(withdrawCooldownRemaining)} remaining.`;
     }
-    return `Withdraw ${WITHDRAW_CORN_COST.toLocaleString("en-US")} $CORN for ${formatSolAmount(WITHDRAW_SOL_AMOUNT)}.`;
+    return "Sends SPL $CORN from treasury to your wallet (1:1 in-game debit).";
   }, [
     connected,
     corn,
+    mintPubkey,
+    parsedWithdrawAmount,
     playerLevel,
     treasuryPubkey,
     walletMode,
     withdrawCooldownRemaining,
   ]);
+
+  const depositHint = useMemo(() => {
+    if (!walletMode) return "Available in wallet mode only.";
+    if (!connected) return "Connect your wallet first.";
+    if (!treasuryPubkey) return "Treasury wallet is not configured.";
+    if (!mintPubkey) return "$CORN mint is not configured.";
+    return `Send SPL $CORN to the treasury wallet — credited 1:1 in-game (min ${MIN_DEPOSIT_CORN}).`;
+  }, [connected, mintPubkey, treasuryPubkey, walletMode]);
 
   return {
     canDeposit,
@@ -302,13 +353,23 @@ export function useTreasury() {
     withdraw,
     status,
     clearStatus,
+    depositAmount,
+    setDepositAmount,
+    withdrawAmount,
+    setWithdrawAmount,
+    depositAmountValid,
+    withdrawAmountValid,
+    depositBlockReason,
     withdrawBlockReason,
     withdrawCooldownRemaining,
     withdrawHint,
-    depositRateLabel: `${DEPOSIT_CORN_REWARD.toLocaleString("en-US")} $CORN / ${formatSolAmount(DEPOSIT_SOL_AMOUNT)}`,
-    withdrawRateLabel: `${WITHDRAW_CORN_COST.toLocaleString("en-US")} $CORN / ${formatSolAmount(WITHDRAW_SOL_AMOUNT)}`,
+    depositHint,
+    depositRateLabel: "1:1 SPL $CORN → in-game balance",
+    withdrawRateLabel: "1:1 in-game $CORN → SPL wallet",
     withdrawMinLevel: WITHDRAW_MIN_LEVEL,
     playerLevel,
     isLoading: status.type === "loading",
+    minDepositCorn: MIN_DEPOSIT_CORN,
+    minWithdrawCorn: MIN_WITHDRAW_CORN,
   };
 }

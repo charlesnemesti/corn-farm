@@ -1,6 +1,7 @@
 // NOTE: All code must stay in English, even when requirements arrive in Spanish.
 
 import type { PlantedCrop } from "./cropState";
+import { DEMO_MAX_PLOT_ID } from "./playMode";
 import { PLOT_COUNT } from "./plotBoard";
 
 export const STARTER_PLOT_ID = 0;
@@ -25,7 +26,8 @@ export type UnlockPlotFailureReason =
   | "invalid-plot"
   | "previous-row-locked"
   | "level-too-low"
-  | "insufficient-corn";
+  | "insufficient-corn"
+  | "demo-locked";
 
 export type UnlockPlotResult = "success" | UnlockPlotFailureReason;
 
@@ -53,6 +55,16 @@ export function normalizeUnlockedPlotIds(plotIds: number[]): number[] {
   return unique;
 }
 
+export function clampUnlockedPlotsForDemo(
+  unlockedPlotIds: number[],
+  demoMode: boolean,
+): number[] {
+  if (!demoMode) return normalizeUnlockedPlotIds(unlockedPlotIds);
+  return normalizeUnlockedPlotIds(
+    unlockedPlotIds.filter((id) => id <= DEMO_MAX_PLOT_ID),
+  );
+}
+
 /** Keeps starter row plus any row that already has crops when migrating old saves. */
 export function deriveUnlockedPlotIdsFromCrops(plantedCrops: PlantedCrop[]): number[] {
   const ids = new Set(getStarterUnlockedPlotIds());
@@ -67,7 +79,12 @@ export function canPurchasePlotRow(
   unlockedPlotIds: readonly number[],
   playerLevel: number,
   corn: number,
+  demoMode = false,
 ): { ok: true } | { ok: false; reason: UnlockPlotFailureReason } {
+  if (demoMode && plotId > DEMO_MAX_PLOT_ID) {
+    return { ok: false, reason: "demo-locked" };
+  }
+
   if (plotId <= STARTER_PLOT_ID || plotId >= PLOT_COUNT) {
     return { ok: false, reason: "invalid-plot" };
   }
@@ -112,6 +129,8 @@ export function getUnlockBlockMessage(
       return `Reach level ${config?.minLevel ?? "?"} to unlock this row.`;
     case "insufficient-corn":
       return `You need ${config?.cornCost.toLocaleString("en-US") ?? "?"} $CORN.`;
+    case "demo-locked":
+      return "Connect your wallet to unlock more rows. Demo is limited to row 1.";
     default:
       return "This row cannot be unlocked yet.";
   }

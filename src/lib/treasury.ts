@@ -3,14 +3,21 @@
 import {
   Connection,
   PublicKey,
-  SystemProgram,
   Transaction,
   type TransactionSignature,
 } from "@solana/web3.js";
 import {
-  DEPOSIT_SOL_LAMPORTS,
+  createAssociatedTokenAccountIdempotentInstruction,
+  createTransferInstruction,
+  getAssociatedTokenAddressSync,
+  TOKEN_PROGRAM_ID,
+} from "@solana/spl-token";
+import {
+  cornToRawAmount,
+  getCornMintPublicKey,
+  MIN_DEPOSIT_CORN,
+  MIN_WITHDRAW_CORN,
   WITHDRAW_COOLDOWN_MS,
-  WITHDRAW_CORN_COST,
   WITHDRAW_MIN_LEVEL,
   getTreasuryPublicKey,
 } from "./treasuryConfig";
@@ -18,32 +25,72 @@ import {
 export type TreasuryBlockReason =
   | "wallet-not-connected"
   | "treasury-not-configured"
+  | "mint-not-configured"
+  | "invalid-deposit-amount"
+  | "invalid-withdraw-amount"
   | "level-too-low"
   | "insufficient-corn"
   | "cooldown-active"
   | "demo-mode";
 
-export function buildDepositTransaction(
+export async function buildCornDepositTransaction(
+  connection: Connection,
   fromPubkey: PublicKey,
   treasuryPubkey: PublicKey,
-): Transaction {
-  const transaction = new Transaction().add(
-    SystemProgram.transfer({
+  depositCorn: number,
+): Promise<Transaction> {
+  const mintPubkey = getCornMintPublicKey();
+  if (!mintPubkey) {
+    throw new Error("$CORN mint is not configured.");
+  }
+
+  if (!Number.isFinite(depositCorn) || depositCorn < MIN_DEPOSIT_CORN) {
+    throw new Error(`Minimum deposit is ${MIN_DEPOSIT_CORN} $CORN.`);
+  }
+
+  const senderAta = getAssociatedTokenAddressSync(mintPubkey, fromPubkey);
+  const treasuryAta = getAssociatedTokenAddressSync(mintPubkey, treasuryPubkey);
+  const amountRaw = cornToRawAmount(depositCorn);
+
+  const transaction = new Transaction();
+
+  const treasuryAtaInfo = await connection.getAccountInfo(treasuryAta);
+  if (!treasuryAtaInfo) {
+    transaction.add(
+      createAssociatedTokenAccountIdempotentInstruction(
+        fromPubkey,
+        treasuryAta,
+        treasuryPubkey,
+        mintPubkey,
+      ),
+    );
+  }
+
+  transaction.add(
+    createTransferInstruction(
+      senderAta,
+      treasuryAta,
       fromPubkey,
-      toPubkey: treasuryPubkey,
-      lamports: DEPOSIT_SOL_LAMPORTS,
-    }),
+      amountRaw,
+      [],
+      TOKEN_PROGRAM_ID,
+    ),
   );
 
   return transaction;
 }
 
-export async function verifyDepositTransaction(
+export async function verifyCornDepositTransaction(
   connection: Connection,
   signature: TransactionSignature,
   expectedSender: PublicKey,
   treasuryPubkey: PublicKey,
+  expectedCorn: number,
 ): Promise<boolean> {
+  const mintPubkey = getCornMintPublicKey();
+  if (!mintPubkey) return false;
+
+  const expectedRaw = cornToRawAmount(expectedCorn);
   const response = await connection.getTransaction(signature, {
     commitment: "confirmed",
     maxSupportedTransactionVersion: 0,
@@ -51,25 +98,30 @@ export async function verifyDepositTransaction(
 
   if (!response?.meta || response.meta.err) return false;
 
-  const accountKeys = response.transaction.message.getAccountKeys();
-  const senderIndex = accountKeys.staticAccountKeys.findIndex((key) =>
-    key.equals(expectedSender),
-  );
-  const treasuryIndex = accountKeys.staticAccountKeys.findIndex((key) =>
-    key.equals(treasuryPubkey),
-  );
+  const mint = mintPubkey.toBase58();
+  const sender = expectedSender.toBase58();
+  const treasury = treasuryPubkey.toBase58();
 
-  if (senderIndex < 0 || treasuryIndex < 0) return false;
+  const pre = response.meta.preTokenBalances ?? [];
+  const post = response.meta.postTokenBalances ?? [];
 
-  const preBalances = response.meta.preBalances;
-  const postBalances = response.meta.postBalances;
-  const senderDelta = postBalances[senderIndex] - preBalances[senderIndex];
-  const treasuryDelta = postBalances[treasuryIndex] - preBalances[treasuryIndex];
+  const getBalance = (
+    balances: typeof pre,
+    owner: string,
+  ): bigint => {
+    const entry = balances.find(
+      (balance) => balance.mint === mint && balance.owner === owner,
+    );
+    if (!entry) return BigInt(0);
+    return BigInt(entry.uiTokenAmount.amount);
+  };
 
-  const fee = response.meta.fee ?? 0;
-  const expectedSenderDelta = -(DEPOSIT_SOL_LAMPORTS + fee);
+  const senderDelta =
+    getBalance(post, sender) - getBalance(pre, sender);
+  const treasuryDelta =
+    getBalance(post, treasury) - getBalance(pre, treasury);
 
-  return senderDelta === expectedSenderDelta && treasuryDelta === DEPOSIT_SOL_LAMPORTS;
+  return senderDelta === -expectedRaw && treasuryDelta === expectedRaw;
 }
 
 export function getWithdrawBlockReason(
@@ -77,9 +129,13 @@ export function getWithdrawBlockReason(
   corn: number,
   lastWithdrawAt: number,
   now: number,
+  withdrawCorn: number,
 ): TreasuryBlockReason | null {
   if (playerLevel < WITHDRAW_MIN_LEVEL) return "level-too-low";
-  if (corn < WITHDRAW_CORN_COST) return "insufficient-corn";
+  if (!Number.isFinite(withdrawCorn) || withdrawCorn < MIN_WITHDRAW_CORN) {
+    return "invalid-withdraw-amount";
+  }
+  if (corn < withdrawCorn) return "insufficient-corn";
 
   if (lastWithdrawAt > 0 && now - lastWithdrawAt < WITHDRAW_COOLDOWN_MS) {
     return "cooldown-active";
@@ -102,12 +158,18 @@ export function getTreasuryBlockMessage(reason: TreasuryBlockReason): string {
       return "Connect your wallet to use the treasury.";
     case "treasury-not-configured":
       return "Treasury is not configured yet. Set NEXT_PUBLIC_TREASURY_PUBKEY.";
+    case "mint-not-configured":
+      return "$CORN mint is not configured. Set NEXT_PUBLIC_CORN_MINT.";
+    case "invalid-deposit-amount":
+      return `Enter at least ${MIN_DEPOSIT_CORN} $CORN to deposit.`;
+    case "invalid-withdraw-amount":
+      return `Enter at least ${MIN_WITHDRAW_CORN} $CORN to withdraw.`;
     case "demo-mode":
       return "Switch to wallet mode to deposit or withdraw.";
     case "level-too-low":
-      return `Reach level ${WITHDRAW_MIN_LEVEL} to unlock withdrawals.`;
+      return `Reach level ${WITHDRAW_MIN_LEVEL} to unlock withdrawals. The treasury needs time for team seeding and player deposits before SPL can leave the pool.`;
     case "insufficient-corn":
-      return `You need ${WITHDRAW_CORN_COST.toLocaleString("en-US")} $CORN to withdraw.`;
+      return "Not enough in-game $CORN for this withdrawal.";
     case "cooldown-active":
       return "Withdrawal cooldown is still active.";
     default:

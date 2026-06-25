@@ -1,6 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import { useGame } from "@/context/GameProvider";
+import { usePlayMode } from "@/context/PlayModeProvider";
+import { LeaderboardPanel } from "@/components/game/LeaderboardPanel";
 import {
   calculateCornPerHour,
   formatCornPerHour,
@@ -13,9 +16,11 @@ type MenuStatsPanelProps = {
   menuLayout: GameMenuLayout;
 };
 
-// Production, level, and XP lines in the menu Stats section.
+// Production, level, XP, and weekly leaderboard entry in the menu Stats section.
 export function MenuStatsPanel({ menuLayout }: MenuStatsPanelProps) {
   const { plantedCrops, xp, hydrated } = useGame();
+  const { playMode } = usePlayMode();
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
   const { position: menuPosition, scale } = menuLayout;
   const anchor = menuToScreen(
     STATS_TEXT_ANCHOR.x,
@@ -35,19 +40,30 @@ export function MenuStatsPanel({ menuLayout }: MenuStatsPanelProps) {
   const xpLabel = hydrated ? formatXpProgress(xpProgress) : "— / — XP";
 
   return (
-    <div
-      className="pointer-events-none absolute z-[46] flex w-[70%] -translate-x-1/2 flex-col items-center text-center font-semibold tracking-wide text-[#4a3428]"
-      style={{
-        left: anchor.x,
-        top: anchor.y + STATS_TEXT_ANCHOR.screenOffsetY * scale,
-        fontSize,
-        gap: lineGap,
-      }}
-      aria-label="Farm stats"
-    >
-      <p>{productionLabel}</p>
-      <p>{levelLabel}</p>
-      <p>{xpLabel}</p>
-    </div>
+    <>
+      <div
+        className="pointer-events-none absolute z-[46] flex w-[70%] -translate-x-1/2 flex-col items-center text-center font-semibold tracking-wide text-[#4a3428]"
+        style={{
+          left: anchor.x,
+          top: anchor.y + STATS_TEXT_ANCHOR.screenOffsetY * scale,
+          fontSize,
+          gap: lineGap,
+        }}
+        aria-label="Farm stats"
+      >
+        <p>{productionLabel}</p>
+        <p>{levelLabel}</p>
+        <p>{xpLabel}</p>
+        <button
+          type="button"
+          onClick={() => setLeaderboardOpen(true)}
+          className="pointer-events-auto mt-1 rounded-md border border-[#4a3428]/25 bg-[#f5e6c8]/80 px-2 py-0.5 text-[0.85em] font-bold text-[#4a3428] transition hover:bg-[#f5e6c8]"
+        >
+          {playMode === "wallet" ? "Weekly rank" : "Leaderboard"}
+        </button>
+      </div>
+
+      <LeaderboardPanel open={leaderboardOpen} onClose={() => setLeaderboardOpen(false)} />
+    </>
   );
 }
