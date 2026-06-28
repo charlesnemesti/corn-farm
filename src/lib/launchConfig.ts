@@ -1,24 +1,8 @@
 // NOTE: All code must stay in English, even when requirements arrive in Spanish.
 
-import { PublicKey } from "@solana/web3.js";
-
 /** Production treasury — same wallet as test; only the mint CA changes at launch. */
 export const LAUNCH_TREASURY_PUBKEY =
   "AXp2F7NP3cKU7nP8HXXL1XKuSrj1JeAYj2im4JKvNyvj";
-
-/** True when NEXT_PUBLIC_CORN_MINT is a valid base58 address (not a URL). */
-export function isValidCornMintConfigured(): boolean {
-  const mint = process.env.NEXT_PUBLIC_CORN_MINT?.trim();
-  if (!mint) return false;
-  if (mint.startsWith("http://") || mint.startsWith("https://")) return false;
-
-  try {
-    new PublicKey(mint);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 /**
  * Wallet mode stays closed until launch explicitly sets
