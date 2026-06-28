@@ -1,5 +1,9 @@
 // NOTE: All code must stay in English, even when requirements arrive in Spanish.
 
+/** Production treasury — same wallet as test; only the mint CA changes at launch. */
+export const LAUNCH_TREASURY_PUBKEY =
+  "AXp2F7NP3cKU7nP8HXXL1XKuSrj1JeAYj2im4JKvNyvj";
+
 /** User-facing copy while the official $CORN mint is not wired yet. */
 export const LAUNCH_COPY = {
   walletBannerTitle: "$CORN on-chain opens right after launch",

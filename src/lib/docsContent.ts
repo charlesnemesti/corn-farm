@@ -21,7 +21,7 @@ import {
   TOKENOMICS,
   formatCooldown,
 } from "./treasuryConfig";
-import { LAUNCH_COPY } from "./launchConfig";
+import { LAUNCH_COPY, LAUNCH_TREASURY_PUBKEY } from "./launchConfig";
 import { WEEKLY_PRIZE_TIERS } from "./leaderboard";
 import { XP_PER_CYCLE, XP_PER_LEVEL_STEP, xpToReachLevel } from "./levelConfig";
 import {
@@ -280,6 +280,12 @@ export const DOCS_SECTIONS: DocsSection[] = [
       `Withdrawal cooldown: ${formatCooldown(WITHDRAW_COOLDOWN_MS)} between on-chain withdrawals.`,
     ],
     bullets: TOKENOMICS.playerFlow.map((step) => `${step.label}: ${step.detail}`),
+    subsections: [
+      {
+        title: "At launch",
+        body: `Treasury wallet stays ${LAUNCH_TREASURY_PUBKEY.slice(0, 4)}…${LAUNCH_TREASURY_PUBKEY.slice(-4)} (same as test). Only the official pump.fun mint CA is wired via npm run set-launch-mint. TREASURY_SECRET_KEY does not change. Fund the treasury with SOL + $CORN after redeploy — on-chain features go live in about 5–10 minutes.`,
+      },
+    ],
   },
   {
     id: "leaderboard",
@@ -324,6 +330,10 @@ export const DOCS_SECTIONS: DocsSection[] = [
       {
         title: "Why is my withdrawal locked?",
         body: `Before launch, on-chain treasury features stay closed until the official $CORN mint is connected (about 5–10 minutes after we fund the treasury). After launch you need player level ${WITHDRAW_MIN_LEVEL}, sufficient in-game balance, and enough SPL $CORN in the treasury.`,
+      },
+      {
+        title: "At launch",
+        body: `Treasury wallet stays ${LAUNCH_TREASURY_PUBKEY.slice(0, 4)}…${LAUNCH_TREASURY_PUBKEY.slice(-4)} (same as test). Only NEXT_PUBLIC_CORN_MINT changes to the official pump.fun CA.`,
       },
       {
         title: "Does weather affect offline farms?",
