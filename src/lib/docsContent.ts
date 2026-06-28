@@ -21,6 +21,7 @@ import {
   TOKENOMICS,
   formatCooldown,
 } from "./treasuryConfig";
+import { LAUNCH_COPY } from "./launchConfig";
 import { WEEKLY_PRIZE_TIERS } from "./leaderboard";
 import { XP_PER_CYCLE, XP_PER_LEVEL_STEP, xpToReachLevel } from "./levelConfig";
 import {
@@ -114,7 +115,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         title: "Wallet mode",
-        body: `Connect a Solana wallet (e.g. Phantom). You start with ${WALLET_STARTING_CORN} in-game $CORN until you deposit SPL $CORN from your wallet. Progress syncs to your wallet address. Required for treasury deposit/withdraw and the weekly leaderboard.`,
+        body: `${LAUNCH_COPY.loginWalletSubtitle} Farm, leaderboard, and server saves work before the mint goes live. ${LAUNCH_COPY.treasuryPanelLead}`,
       },
       {
         title: "First steps",
@@ -270,6 +271,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
     id: "treasury",
     title: "Treasury",
     paragraphs: [
+      LAUNCH_COPY.treasuryPanelLead,
       TOKENOMICS.treasury.backsWithdrawals,
       TOKENOMICS.treasury.flowSummary,
       TOKENOMICS.treasury.manualSeed,
@@ -321,7 +323,7 @@ export const DOCS_SECTIONS: DocsSection[] = [
       },
       {
         title: "Why is my withdrawal locked?",
-        body: `You need player level ${WITHDRAW_MIN_LEVEL} and sufficient in-game balance. The treasury must hold enough SPL $CORN to fulfill the request.`,
+        body: `Before launch, on-chain treasury features stay closed until the official $CORN mint is connected (about 5–10 minutes after we fund the treasury). After launch you need player level ${WITHDRAW_MIN_LEVEL}, sufficient in-game balance, and enough SPL $CORN in the treasury.`,
       },
       {
         title: "Does weather affect offline farms?",

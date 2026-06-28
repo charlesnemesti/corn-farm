@@ -3,10 +3,12 @@
 import { useState } from "react";
 import { usePlayMode } from "@/context/PlayModeProvider";
 import { TreasuryPanel } from "@/components/game/TreasuryPanel";
+import { useTreasuryLaunchStatus } from "@/hooks/useTreasuryLaunchStatus";
 
 // Header entry point for the on-chain treasury.
 export function TreasuryControls() {
   const { playMode, walletConnected } = usePlayMode();
+  const { launchPending } = useTreasuryLaunchStatus();
   const [open, setOpen] = useState(false);
 
   const walletMode = playMode === "wallet";
@@ -19,9 +21,11 @@ export function TreasuryControls() {
         className="hud-action-button shrink-0"
         title={
           walletMode
-            ? walletConnected
-              ? "Deposit or withdraw SPL $CORN"
-              : "Connect wallet to use treasury"
+            ? launchPending
+              ? "Treasury opens right after $CORN launch"
+              : walletConnected
+                ? "Deposit or withdraw SPL $CORN"
+                : "Connect wallet to use treasury"
             : "Demo mode — connect wallet to use treasury"
         }
       >

@@ -1,6 +1,7 @@
 // NOTE: All code must stay in English, even when requirements arrive in Spanish.
 
 import { CURRENCY_TICKER, GAME_NAME } from "./brandConfig";
+import { LAUNCH_COPY } from "./launchConfig";
 
 /** Public social endpoints — update before launch. */
 export const SOCIAL_LINKS = {
@@ -25,12 +26,11 @@ export const LOGIN_COPY = {
   panelSubtitle:
     "Jump in instantly with Demo, or connect a wallet for the full on-chain experience.",
   walletTitle: "Wallet mode",
-  walletSubtitle:
-    "Server-side save, leaderboard rank, and treasury withdrawals on Solana mainnet.",
+  walletSubtitle: LAUNCH_COPY.loginWalletSubtitle,
   demoTitle: "Demo mode",
   demoDescription: "Row 1 · Local save · No withdrawals",
   walletCardTitle: "Wallet mode",
-  walletCardDescription: "Full farm · Server save · Treasury",
+  walletCardDescription: LAUNCH_COPY.loginWalletCardDescription,
   connectCta: "Connect wallet",
   connectingCta: "Connecting…",
   demoCta: "Play demo",

@@ -126,7 +126,7 @@ async function main() {
   console.log("");
   console.log("Next steps:");
   console.log("  1. Ensure NEXT_PUBLIC_TREASURY_PUBKEY + TREASURY_SECRET_KEY are set");
-  console.log("  2. Fund treasury with SOL (fees) + test tokens (withdrawals)");
+  console.log("  2. Fund treasury with SOL (fees) + $CORN (withdrawals / prizes)");
   console.log("  3. Restart dev server: npm run dev");
   console.log("  4. Verify: npm run verify-treasury");
 }

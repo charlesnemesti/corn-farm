@@ -8,6 +8,7 @@ import { useInventoryMenu } from "@/context/InventoryMenuProvider";
 import { useCoverTransform } from "@/hooks/useCoverTransform";
 import { useSlotCalibration } from "@/hooks/useSlotCalibration";
 import { getGameMenuLayout, resolveMenuLayout } from "@/lib/menuCoordinates";
+import { isDebugModeActive } from "@/lib/debugConfig";
 import { FARMER_NPC } from "@/lib/npcSprites";
 import { FARM_BACKGROUND } from "@/lib/plotBoard";
 import { BackpackToggle } from "@/components/game/BackpackToggle";
@@ -27,7 +28,7 @@ import { VillagerNpc } from "./VillagerNpc";
 
 function FarmSceneContent() {
   const searchParams = useSearchParams();
-  const debug = searchParams.get("debug") === "1";
+  const debug = isDebugModeActive(searchParams);
   const transform = useCoverTransform();
   const calibration = useSlotCalibration();
   const {

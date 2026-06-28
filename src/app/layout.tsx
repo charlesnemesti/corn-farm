@@ -7,6 +7,7 @@ import { DebugBottomBar } from "@/components/layout/DebugBottomBar";
 import { Header } from "@/components/layout/Header";
 import { DemoConnectBanner } from "@/components/game/DemoConnectBanner";
 import { StorageWarningBanner } from "@/components/game/StorageWarningBanner";
+import { WalletLaunchBanner } from "@/components/game/WalletLaunchBanner";
 import { PlayModeShell } from "@/components/game/PlayModeShell";
 import { TutorialOverlay } from "@/components/game/TutorialOverlay";
 import { TutorialReplayButton } from "@/components/layout/TutorialReplayButton";
@@ -69,6 +70,7 @@ export default function RootLayout({
                             <TutorialReplayButton />
                             <DemoConnectBanner />
                             <StorageWarningBanner />
+                            <WalletLaunchBanner />
                           </PlayModeShell>
                         </DragProvider>
                       </InventoryMenuProvider>

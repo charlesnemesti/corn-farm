@@ -6,7 +6,7 @@ import {
 
 export const runtime = "nodejs";
 
-/** On-chain treasury health check — use after wiring pump.fun test token CA. */
+/** On-chain treasury health check — use after wiring the official $CORN mint CA. */
 export async function GET() {
   try {
     const status = await getTreasuryLiveStatus();

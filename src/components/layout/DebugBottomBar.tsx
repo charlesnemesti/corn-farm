@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import { useGame } from "@/context/GameProvider";
 import { useDebugUi } from "@/context/DebugUiProvider";
 import { useWeather } from "@/context/WeatherProvider";
+import { DEBUG_TOOLS_ENABLED, isDebugModeActive } from "@/lib/debugConfig";
 
 const DEBUG_CORN_AMOUNT = 5_000;
 const DEBUG_XP_AMOUNT = 500;
@@ -12,7 +13,7 @@ const DEBUG_XP_AMOUNT = 500;
 function CalibrateToggle() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const debug = searchParams.get("debug") === "1";
+  const debug = isDebugModeActive(searchParams);
 
   const toggleCalibrator = () => {
     const params = new URLSearchParams(searchParams.toString());
@@ -131,7 +132,9 @@ function DevDebugTools() {
 
 function DebugBottomBarContent() {
   const searchParams = useSearchParams();
-  const debug = searchParams.get("debug") === "1";
+  if (!DEBUG_TOOLS_ENABLED) return null;
+
+  const debug = isDebugModeActive(searchParams);
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-3 z-[120] flex flex-wrap items-center justify-center gap-2 px-3">

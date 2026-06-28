@@ -59,6 +59,7 @@ export function useTreasury() {
     publicKey ? loadWalletTreasuryState(publicKey.toBase58()) : null,
   );
   const [withdrawalsEnabled, setWithdrawalsEnabled] = useState<boolean | null>(null);
+  const [depositsEnabled, setDepositsEnabled] = useState<boolean | null>(null);
 
   const walletAddress = publicKey?.toBase58() ?? null;
   const treasuryPubkey = getTreasuryPublicKey();
@@ -87,13 +88,17 @@ export function useTreasury() {
 
     fetch("/api/treasury/config")
       .then((response) => response.json())
-      .then((payload: { withdrawalsEnabled?: boolean }) => {
+      .then((payload: { withdrawalsEnabled?: boolean; depositsEnabled?: boolean }) => {
         if (!cancelled) {
           setWithdrawalsEnabled(payload.withdrawalsEnabled === true);
+          setDepositsEnabled(payload.depositsEnabled === true);
         }
       })
       .catch(() => {
-        if (!cancelled) setWithdrawalsEnabled(false);
+        if (!cancelled) {
+          setWithdrawalsEnabled(false);
+          setDepositsEnabled(false);
+        }
       });
 
     return () => {
@@ -104,9 +109,13 @@ export function useTreasury() {
   const lastWithdrawAt = walletTreasuryState?.lastWithdrawAt ?? 0;
   const withdrawCooldownRemaining = getWithdrawCooldownRemaining(lastWithdrawAt, now);
 
+  const launchPending = depositsEnabled !== true;
+  const onChainTreasuryReady = depositsEnabled === true;
+
   const depositBlockReason = useMemo((): TreasuryBlockReason | null => {
     if (!walletMode) return "demo-mode";
     if (!connected || !publicKey) return "wallet-not-connected";
+    if (launchPending) return "launch-pending";
     if (!treasuryPubkey) return "treasury-not-configured";
     if (!mintPubkey) return "mint-not-configured";
     if (!depositAmountValid) return "invalid-deposit-amount";
@@ -114,6 +123,7 @@ export function useTreasury() {
   }, [
     connected,
     depositAmountValid,
+    launchPending,
     mintPubkey,
     publicKey,
     treasuryPubkey,
@@ -123,6 +133,7 @@ export function useTreasury() {
   const withdrawBlockReason = useMemo(() => {
     if (!walletMode) return "demo-mode" as TreasuryBlockReason;
     if (!connected || !publicKey) return "wallet-not-connected" as TreasuryBlockReason;
+    if (launchPending) return "launch-pending" as TreasuryBlockReason;
     if (!treasuryPubkey) return "treasury-not-configured" as TreasuryBlockReason;
     if (!mintPubkey) return "mint-not-configured" as TreasuryBlockReason;
     if (withdrawalsEnabled === false) return "withdrawals-disabled" as TreasuryBlockReason;
@@ -146,6 +157,7 @@ export function useTreasury() {
     treasuryPubkey,
     walletMode,
     withdrawalsEnabled,
+    launchPending,
   ]);
 
   const canDeposit =
@@ -251,7 +263,7 @@ export function useTreasury() {
         setStatus({
           type: "error",
           message:
-            "Deposit reached the treasury but could not be verified yet. Wait a few seconds and try again — your SPL test token counts as in-game $CORN.",
+            "Deposit reached the treasury but could not be verified yet. Wait a few seconds and try again.",
         });
         return;
       }
@@ -480,10 +492,11 @@ export function useTreasury() {
   const depositHint = useMemo(() => {
     if (!walletMode) return "Available in wallet mode only.";
     if (!connected) return "Connect your wallet first.";
+    if (launchPending) return getTreasuryBlockMessage("launch-pending");
     if (!treasuryPubkey) return "Treasury wallet is not configured.";
     if (!mintPubkey) return "$CORN mint is not configured.";
-    return `Send SPL tokens (${getClusterLabel()}) to the treasury — credited 1:1 as in-game $CORN (min ${MIN_DEPOSIT_CORN}). Test mints work the same as the real $CORN token.`;
-  }, [connected, mintPubkey, treasuryPubkey, walletMode]);
+    return `Send SPL $CORN (${getClusterLabel()}) to the treasury — credited 1:1 as in-game $CORN (min ${MIN_DEPOSIT_CORN}).`;
+  }, [connected, launchPending, mintPubkey, treasuryPubkey, walletMode]);
 
   return {
     canDeposit,
@@ -509,6 +522,9 @@ export function useTreasury() {
     withdrawMinLevel: WITHDRAW_MIN_LEVEL,
     playerLevel,
     withdrawalsEnabled,
+    depositsEnabled,
+    launchPending,
+    onChainTreasuryReady,
     isLoading: status.type === "loading",
     minDepositCorn: MIN_DEPOSIT_CORN,
     minWithdrawCorn: MIN_WITHDRAW_CORN,

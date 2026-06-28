@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTreasury } from "@/hooks/useTreasury";
+import { LAUNCH_COPY } from "@/lib/launchConfig";
 import { formatCooldown, getClusterLabel } from "@/lib/treasuryConfig";
 
 type TreasuryPanelProps = {
@@ -35,6 +36,7 @@ export function TreasuryPanel({ open, onClose }: TreasuryPanelProps) {
     minDepositCorn,
     minWithdrawCorn,
     withdrawalsEnabled,
+    launchPending,
   } = useTreasury();
   const [mounted, setMounted] = useState(false);
   const [recoverSignature, setRecoverSignature] = useState("");
@@ -81,6 +83,22 @@ export function TreasuryPanel({ open, onClose }: TreasuryPanelProps) {
         </div>
 
         <div className="mt-4 space-y-3">
+          {launchPending ? (
+            <section
+              role="status"
+              className="rounded-lg border border-sky-400/40 bg-sky-950/50 p-4"
+            >
+              <h3 className="text-sm font-semibold text-sky-100">
+                {LAUNCH_COPY.walletBannerTitle}
+              </h3>
+              <p className="mt-2 text-xs leading-relaxed text-sky-100/85">
+                {LAUNCH_COPY.treasuryPanelLead}
+              </p>
+            </section>
+          ) : null}
+
+          {!launchPending ? (
+          <>
           <section className="rounded-lg border border-farm-sun/25 bg-farm-sun/10 p-3">
             <h3 className="text-sm font-semibold text-farm-sun">Deposit $CORN</h3>
             <p className="mt-1 text-xs text-white/70">{depositRateLabel}</p>
@@ -114,8 +132,8 @@ export function TreasuryPanel({ open, onClose }: TreasuryPanelProps) {
             <p className="mt-1 text-[11px] text-white/55">{withdrawHint}</p>
             {withdrawalsEnabled === false ? (
               <p className="mt-1 text-[11px] font-semibold text-amber-200/90">
-                Withdrawals disabled — server needs TREASURY_SECRET_KEY for wallet{" "}
-                AXp2F7…Nyvj (set in .env.local locally and in Vercel for production).
+                Withdrawals are not enabled on the server yet. The team sets
+                TREASURY_SECRET_KEY after the treasury wallet is funded at launch.
               </p>
             ) : null}
             {playerLevel < withdrawMinLevel ? (
@@ -181,6 +199,8 @@ export function TreasuryPanel({ open, onClose }: TreasuryPanelProps) {
               Recover deposit
             </button>
           </section>
+          </>
+          ) : null}
         </div>
 
         {status.type !== "idle" ? (
