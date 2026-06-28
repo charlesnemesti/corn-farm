@@ -79,7 +79,10 @@ export function LoginScreen() {
             <p className="login-hero__subtitle">{LOGIN_COPY.heroSubtitle}</p>
           </section>
 
-          <div className="login-stagger" style={{ animationDelay: "0.28s" }}>
+          <div
+            className="login-stagger login-panel-wrap"
+            style={{ animationDelay: "0.28s" }}
+          >
             <LoginModePanel
               awaitingWallet={awaitingWallet}
               connecting={connecting}

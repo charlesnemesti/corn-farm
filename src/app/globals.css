@@ -674,9 +674,16 @@ body {
 }
 
 /* Glass panel */
+.login-panel-wrap {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
 .login-panel {
   position: relative;
   width: min(100%, 34rem);
+  margin-inline: auto;
   padding: clamp(1.25rem, 3vw, 1.75rem);
   border: 1px solid var(--login-border);
   border-radius: 1.35rem;
