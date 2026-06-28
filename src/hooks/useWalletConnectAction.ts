@@ -9,7 +9,7 @@ import { formatWalletAddress } from "@/lib/walletDisplay";
 // Shared wallet connect flow for header, demo banner, and mode gate.
 export function useWalletConnectAction() {
   const { setVisible } = useWalletModal();
-  const { selectPlayMode, playMode } = usePlayMode();
+  const { selectPlayMode, playMode, walletModeEnabled } = usePlayMode();
   const {
     buttonState,
     onConnect,
@@ -33,6 +33,7 @@ export function useWalletConnectAction() {
 
   const connectWallet = useCallback(() => {
     if (connected) return;
+    if (!walletModeEnabled) return;
 
     if (playMode !== "wallet") {
       selectPlayMode("wallet");
@@ -52,6 +53,7 @@ export function useWalletConnectAction() {
     playMode,
     selectPlayMode,
     setVisible,
+    walletModeEnabled,
   ]);
 
   const disconnectWallet = useCallback(() => {
@@ -66,6 +68,7 @@ export function useWalletConnectAction() {
     connectWallet,
     disconnectWallet,
     changeWallet,
+    walletModeEnabled,
     buttonState,
     connected,
     connecting,

@@ -24,7 +24,7 @@ export const LOGIN_COPY = {
   heroSubtitle: "The Web3 farm sim built for collectors, grinders, and degens.",
   panelTitle: "Select your path",
   panelSubtitle:
-    "Jump in instantly with Demo, or connect a wallet for the full on-chain experience.",
+    "Play Demo now. Wallet mode opens ~10 minutes after launch while we fund the treasury and connect the official pump.fun $CORN token.",
   walletTitle: "Wallet mode",
   walletSubtitle: LAUNCH_COPY.loginWalletSubtitle,
   demoTitle: "Demo mode",

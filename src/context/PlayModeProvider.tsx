@@ -14,6 +14,7 @@ import {
   clearPlayMode,
   type PlayMode,
 } from "@/lib/playMode";
+import { isWalletModeEnabled } from "@/lib/launchConfig";
 
 type PlayModeContextValue = {
   playMode: PlayMode | null;
@@ -22,6 +23,8 @@ type PlayModeContextValue = {
   /** Block gameplay until a mode is chosen (and wallet connected in wallet mode). */
   gateActive: boolean;
   canPlay: boolean;
+  /** False during pre-launch — wallet mode is blocked on login. */
+  walletModeEnabled: boolean;
   selectPlayMode: (mode: PlayMode) => void;
   /** Return to login and disconnect wallet. */
   signOut: () => void;
@@ -36,14 +39,25 @@ export function PlayModeProvider({ children }: { children: ReactNode }) {
   const [playMode, setPlayMode] = useState<PlayMode | null>(null);
   const [hydrated, setHydrated] = useState(false);
 
+  const walletModeEnabled = isWalletModeEnabled();
+
   useEffect(() => {
     clearPlayMode();
     setHydrated(true);
   }, []);
 
-  const selectPlayMode = useCallback((mode: PlayMode) => {
-    setPlayMode(mode);
-  }, []);
+  useEffect(() => {
+    if (walletModeEnabled) return;
+    setPlayMode((current) => (current === "wallet" ? null : current));
+  }, [walletModeEnabled]);
+
+  const selectPlayMode = useCallback(
+    (mode: PlayMode) => {
+      if (mode === "wallet" && !walletModeEnabled) return;
+      setPlayMode(mode);
+    },
+    [walletModeEnabled],
+  );
 
   const signOut = useCallback(() => {
     clearPlayMode();
@@ -59,12 +73,15 @@ export function PlayModeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const gateActive =
-    hydrated && (playMode === null || (playMode === "wallet" && !connected));
+    hydrated &&
+    (playMode === null ||
+      (playMode === "wallet" && (!walletModeEnabled || !connected)));
 
   const canPlay =
     hydrated &&
     playMode !== null &&
-    (playMode === "demo" || (playMode === "wallet" && connected));
+    (playMode === "demo" ||
+      (playMode === "wallet" && walletModeEnabled && connected));
 
   const value = useMemo(
     () => ({
@@ -73,6 +90,7 @@ export function PlayModeProvider({ children }: { children: ReactNode }) {
       walletConnected: connected,
       gateActive,
       canPlay,
+      walletModeEnabled,
       selectPlayMode,
       signOut,
       switchPlayMode,
@@ -81,6 +99,7 @@ export function PlayModeProvider({ children }: { children: ReactNode }) {
       connected,
       gateActive,
       canPlay,
+      walletModeEnabled,
       hydrated,
       playMode,
       selectPlayMode,

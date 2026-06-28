@@ -1,10 +1,12 @@
 "use client";
 
 import { LOGIN_COPY } from "@/lib/loginConfig";
+import { LAUNCH_COPY } from "@/lib/launchConfig";
 
 type LoginModePanelProps = {
   awaitingWallet: boolean;
   connecting: boolean;
+  walletModeEnabled: boolean;
   onSelectDemo: () => void;
   onSelectWallet: () => void;
   onConnectWallet: () => void;
@@ -19,6 +21,7 @@ function ModeCard({
   cta,
   onClick,
   disabled,
+  locked,
 }: {
   accent: "demo" | "wallet";
   icon: string;
@@ -27,13 +30,15 @@ function ModeCard({
   cta: string;
   onClick: () => void;
   disabled?: boolean;
+  locked?: boolean;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={disabled}
-      className={`login-mode-card login-mode-card--${accent}`}
+      aria-disabled={disabled || locked}
+      className={`login-mode-card login-mode-card--${accent}${locked ? " login-mode-card--locked" : ""}`}
     >
       <span className="login-mode-card__shine" aria-hidden />
       <span className="login-mode-card__icon" aria-hidden>
@@ -56,6 +61,7 @@ function ModeCard({
 export function LoginModePanel({
   awaitingWallet,
   connecting,
+  walletModeEnabled,
   onSelectDemo,
   onSelectWallet,
   onConnectWallet,
@@ -112,24 +118,47 @@ export function LoginModePanel({
             </div>
           </div>
         ) : (
-          <div className="login-panel__mode-grid">
-            <ModeCard
-              accent="demo"
-              icon="▶"
-              title={LOGIN_COPY.demoTitle}
-              description={LOGIN_COPY.demoDescription}
-              cta={LOGIN_COPY.demoCta}
-              onClick={onSelectDemo}
-            />
-            <ModeCard
-              accent="wallet"
-              icon="◎"
-              title={LOGIN_COPY.walletCardTitle}
-              description={LOGIN_COPY.walletCardDescription}
-              cta="Connect"
-              onClick={onSelectWallet}
-            />
-          </div>
+          <>
+            {!walletModeEnabled ? (
+              <div
+                className="login-panel__launch-notice"
+                role="status"
+                aria-live="polite"
+              >
+                <p className="login-panel__launch-notice-title">
+                  {LAUNCH_COPY.walletModeBlockedTitle}
+                </p>
+                <p className="login-panel__launch-notice-body">
+                  {LAUNCH_COPY.walletModeBlockedBody}
+                </p>
+              </div>
+            ) : null}
+
+            <div className="login-panel__mode-grid">
+              <ModeCard
+                accent="demo"
+                icon="▶"
+                title={LOGIN_COPY.demoTitle}
+                description={LOGIN_COPY.demoDescription}
+                cta={LOGIN_COPY.demoCta}
+                onClick={onSelectDemo}
+              />
+              <ModeCard
+                accent="wallet"
+                icon="◎"
+                title={LOGIN_COPY.walletCardTitle}
+                description={LOGIN_COPY.walletCardDescription}
+                cta={
+                  walletModeEnabled
+                    ? "Connect"
+                    : LAUNCH_COPY.walletCardLockedCta
+                }
+                onClick={onSelectWallet}
+                disabled={!walletModeEnabled}
+                locked={!walletModeEnabled}
+              />
+            </div>
+          </>
         )}
       </div>
     </div>

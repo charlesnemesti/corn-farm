@@ -751,6 +751,29 @@ body {
   gap: 0.75rem;
 }
 
+.login-panel__launch-notice {
+  margin-bottom: 0.85rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(135, 184, 217, 0.45);
+  border-radius: 0.9rem;
+  background: rgba(12, 28, 48, 0.72);
+  text-align: center;
+}
+
+.login-panel__launch-notice-title {
+  font-size: 0.82rem;
+  font-weight: 800;
+  line-height: 1.35;
+  color: #b8ddf5;
+}
+
+.login-panel__launch-notice-body {
+  margin-top: 0.45rem;
+  font-size: 0.74rem;
+  line-height: 1.5;
+  color: rgba(184, 221, 245, 0.82);
+}
+
 .login-panel__wallet-step {
   display: flex;
   flex-direction: column;
@@ -799,6 +822,18 @@ body {
   border-color: rgba(255, 200, 87, 0.55);
   background: var(--login-gold-soft);
   box-shadow: 0 12px 40px rgba(255, 200, 87, 0.14);
+}
+
+.login-mode-card--locked,
+.login-mode-card:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  filter: grayscale(0.35);
+}
+
+.login-mode-card--locked .login-mode-card__cta,
+.login-mode-card:disabled .login-mode-card__cta {
+  color: rgba(255, 255, 255, 0.45);
 }
 
 .login-mode-card__shine {

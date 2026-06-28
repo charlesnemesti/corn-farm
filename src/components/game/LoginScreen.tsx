@@ -17,8 +17,14 @@ import { LoginSocialLinks } from "@/components/game/login/LoginSocialLinks";
 
 // Cinematic full-screen login gate — AAA launcher experience.
 export function LoginScreen() {
-  const { gateActive, hydrated, playMode, selectPlayMode, switchPlayMode } =
-    usePlayMode();
+  const {
+    gateActive,
+    hydrated,
+    playMode,
+    walletModeEnabled,
+    selectPlayMode,
+    switchPlayMode,
+  } = usePlayMode();
   const { connectWallet, connecting } = useWalletConnectAction();
   const [revealed, setRevealed] = useState(false);
 
@@ -77,6 +83,7 @@ export function LoginScreen() {
             <LoginModePanel
               awaitingWallet={awaitingWallet}
               connecting={connecting}
+              walletModeEnabled={walletModeEnabled}
               onSelectDemo={() => selectPlayMode("demo")}
               onSelectWallet={() => selectPlayMode("wallet")}
               onConnectWallet={connectWallet}

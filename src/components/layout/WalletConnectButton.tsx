@@ -12,6 +12,7 @@ export function WalletConnectButton() {
     connectWallet,
     disconnectWallet,
     changeWallet,
+    walletModeEnabled,
     connected,
     addressLabel,
     walletIcon,
@@ -40,6 +41,10 @@ export function WalletConnectButton() {
       document.removeEventListener("touchstart", handlePointerDown);
     };
   }, [menuOpen]);
+
+  if (!walletModeEnabled && !connected) {
+    return null;
+  }
 
   if (connected && publicKey) {
     return (

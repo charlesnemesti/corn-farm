@@ -2,10 +2,12 @@
 
 import { usePlayMode } from "@/context/PlayModeProvider";
 import { useWalletConnectAction } from "@/hooks/useWalletConnectAction";
+import { LAUNCH_COPY } from "@/lib/launchConfig";
 
 // Full-screen blur gate — pick Demo or connect wallet for Normal mode.
 export function ModeSelectOverlay() {
-  const { gateActive, playMode, selectPlayMode } = usePlayMode();
+  const { gateActive, playMode, selectPlayMode, walletModeEnabled } =
+    usePlayMode();
   const { connectWallet, connecting } = useWalletConnectAction();
 
   if (!gateActive) return null;
@@ -30,7 +32,9 @@ export function ModeSelectOverlay() {
         <p className="mt-2 text-center text-sm leading-relaxed text-white/70">
           {awaitingWallet
             ? "Wallet mode saves your farm server-side and syncs with the on-chain treasury."
-            : "Demo is free but limited to row 1 with no withdrawals. Connect a wallet for the full farm."}
+            : walletModeEnabled
+              ? "Demo is free but limited to row 1 with no withdrawals. Connect a wallet for the full farm."
+              : LAUNCH_COPY.walletModeBlockedBody}
         </p>
 
         {awaitingWallet ? (
@@ -69,13 +73,16 @@ export function ModeSelectOverlay() {
             <button
               type="button"
               onClick={() => selectPlayMode("wallet")}
-              className="rounded-xl border border-farm-sun/40 bg-farm-sun/10 px-4 py-3 text-left transition hover:bg-farm-sun/20"
+              disabled={!walletModeEnabled}
+              className="rounded-xl border border-farm-sun/40 bg-farm-sun/10 px-4 py-3 text-left transition hover:bg-farm-sun/20 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <span className="block text-sm font-bold text-farm-sun">
                 Normal (Wallet)
               </span>
               <span className="mt-1 block text-xs text-white/65">
-                Server save, leaderboard, treasury on Solana mainnet.
+                {walletModeEnabled
+                  ? "Server save, leaderboard, treasury on Solana mainnet."
+                  : LAUNCH_COPY.loginWalletCardDescription}
               </span>
             </button>
           </div>

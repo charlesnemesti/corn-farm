@@ -4,14 +4,23 @@
 export const LAUNCH_TREASURY_PUBKEY =
   "AXp2F7NP3cKU7nP8HXXL1XKuSrj1JeAYj2im4JKvNyvj";
 
-/** User-facing copy while the official $CORN mint is not wired yet. */
+/** Wallet mode is off until explicitly enabled at launch (see NEXT_PUBLIC_WALLET_MODE_ENABLED). */
+export function isWalletModeEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_WALLET_MODE_ENABLED === "true";
+}
+
+/** User-facing copy while wallet mode / on-chain $CORN are not live yet. */
 export const LAUNCH_COPY = {
-  walletBannerTitle: "$CORN on-chain opens right after launch",
+  walletModeBlockedTitle: "Wallet mode opens ~10 minutes after launch",
+  walletModeBlockedBody:
+    "We're funding the treasury wallet and wiring the official pump.fun $CORN token into the game. Demo mode is available now — check back shortly after launch.",
+  walletBannerTitle: "Wallet mode opens ~10 minutes after launch",
   walletBannerBody:
-    "We are funding the treasury wallet and connecting the official $CORN token. Deposits and withdrawals will go live in about 5–10 minutes once everything is wired up. You can still farm, rank on the leaderboard, and save progress in wallet mode.",
+    "We're funding the treasury and connecting the official pump.fun $CORN token. Wallet mode unlocks automatically once everything is live.",
   treasuryPanelLead:
-    "Treasury deposits and withdrawals are paused until the official $CORN token is connected. This usually takes 5–10 minutes after launch while we fund the treasury wallet.",
+    "Treasury deposits and withdrawals are paused until the official $CORN token is connected and wallet mode is enabled.",
   loginWalletSubtitle:
-    "Server save and weekly leaderboard are live now. On-chain $CORN deposits open minutes after we connect the official token at launch.",
-  loginWalletCardDescription: "Server save · Leaderboard · Treasury at launch",
+    "Wallet mode is closed until we fund the treasury and connect the official $CORN token (~10 minutes after launch).",
+  loginWalletCardDescription: "Opens ~10 min after launch",
+  walletCardLockedCta: "Coming soon",
 } as const;
